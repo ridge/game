@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 var module string
@@ -74,6 +75,14 @@ func Stderr(ctx context.Context) io.Writer {
 	return val.(*task).stderr
 }
 
+func ctxTask(ctx context.Context) *task {
+	val := ctx.Value(taskContextKey)
+	if val == nil {
+		return nil
+	}
+	return val.(*task)
+}
+
 // SerialDeps is like Deps except it runs each dependency serially, instead of
 // in parallel. This can be useful for resource intensive dependencies that
 // shouldn't be run at the same time.
@@ -128,41 +137,45 @@ func plural(name string, count int) string {
 	return name + "s"
 }
 
+const shortTaskThreshold = 10 * time.Millisecond
+
 // runDeps assumes you've already called wrapFns.
 func runDeps(ctx context.Context, deps []dep) {
-	mu := &sync.Mutex{}
+	finishedCh := make(chan *task, len(deps))
 
-	failedSubtasks := []*task{}
-	cumulativeExitStatus := 1
-
-	wg := &sync.WaitGroup{}
 	for _, dep := range deps {
 		t := tasks.Register(dep)
 
-		wg.Add(1)
 		go func() {
-			defer wg.Done()
-
 			t.stdout, t.stderr = newStreamLineWriters(taskOutputCollector{task: t})
-			ctx = context.WithValue(ctx, taskContextKey, t)
-
-			if err := t.run(ctx); err != nil {
-				var subtaskExitStatus = 1
-				if err, ok := err.(exitStatus); ok {
-					subtaskExitStatus = err.ExitStatus()
-				}
-
+			if err := t.run(context.WithValue(ctx, taskContextKey, t)); err != nil {
 				t.stderr.Flush()
 				fmt.Fprintf(t.stderr, "FAILURE | %v\n", err)
-
-				mu.Lock()
-				failedSubtasks = append(failedSubtasks, t)
-				cumulativeExitStatus = max(cumulativeExitStatus, subtaskExitStatus)
-				mu.Unlock()
 			}
+			finishedCh <- t
 		}()
 	}
-	wg.Wait()
+
+	t := ctxTask(ctx)
+	start := time.Now()
+
+	failedSubtasks := []*task{}
+	cumulativeExitStatus := 1
+	for i := 0; i < len(deps); i++ {
+		subt := <-finishedCh
+		if subt.err != nil {
+			subtaskExitStatus := 1
+			if err, ok := subt.err.(exitStatus); ok {
+				subtaskExitStatus = err.ExitStatus()
+			}
+			failedSubtasks = append(failedSubtasks, subt)
+			cumulativeExitStatus = max(cumulativeExitStatus, subtaskExitStatus)
+		}
+	}
+
+	if t != nil {
+		t.subtasksDuration += time.Since(start)
+	}
 
 	if len(failedSubtasks) > 0 {
 		sort.Slice(failedSubtasks, func(i, j int) bool {
@@ -333,9 +346,11 @@ type task struct {
 	once sync.Once
 	fn   func(context.Context) error
 
-	stdout flushWriter
-	stderr flushWriter
-	err    error
+	stdout           flushWriter
+	stderr           flushWriter
+	err              error
+	duration         time.Duration
+	subtasksDuration time.Duration
 
 	displayName string
 }
@@ -344,8 +359,21 @@ func (t *task) String() string {
 	return fmt.Sprintf("#%04d %s", t.id, t.displayName)
 }
 
+const smallTaskThreshold = 10 * time.Millisecond
+
 func (t *task) run(ctx context.Context) error {
 	t.once.Do(func() {
+		start := time.Now()
+		defer func() {
+			t.duration = time.Since(start)
+			if t.duration > smallTaskThreshold {
+				t.stdout.Flush()
+				fmt.Fprintf(t.stdout, "FINISHED | time=%.02fs, self=%.02fs, subtasks=%.02fs\n",
+					t.duration.Seconds(), (t.duration - t.subtasksDuration).Seconds(),
+					t.subtasksDuration.Seconds())
+			}
+		}()
+
 		defer func() {
 			if v := recover(); v != nil {
 				if err, ok := v.(error); ok {
