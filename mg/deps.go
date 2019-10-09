@@ -53,26 +53,25 @@ var tasks = &taskMap{
 type contextKey string
 
 const (
-	stdoutContextKey = contextKey("stdout")
-	stderrContextKey = contextKey("stderr")
+	taskContextKey = contextKey("mage.task")
 )
 
 // Stdout returns a local stdout stream if assigned to the context, or os.Stdout otherwise
 func Stdout(ctx context.Context) io.Writer {
-	val := ctx.Value(stdoutContextKey)
+	val := ctx.Value(taskContextKey)
 	if val == nil {
 		return os.Stdout
 	}
-	return val.(io.Writer)
+	return val.(*task).stdout
 }
 
 // Stderr returns a local stderr stream if assigned to the context, or os.Stderr otherwise
 func Stderr(ctx context.Context) io.Writer {
-	val := ctx.Value(stderrContextKey)
+	val := ctx.Value(taskContextKey)
 	if val == nil {
 		return os.Stderr
 	}
-	return val.(io.Writer)
+	return val.(*task).stderr
 }
 
 // SerialDeps is like Deps except it runs each dependency serially, instead of
@@ -144,34 +143,22 @@ func runDeps(ctx context.Context, deps []dep) {
 		go func() {
 			defer wg.Done()
 
-			toc := taskOutputCollector{task: t}
-			stdout, stderr := newStreamLineWriters(toc)
-			ctx = context.WithValue(ctx, stdoutContextKey, stdout)
-			ctx = context.WithValue(ctx, stderrContextKey, stderr)
+			t.stdout, t.stderr = newStreamLineWriters(taskOutputCollector{task: t})
+			ctx = context.WithValue(ctx, taskContextKey, t)
 
-			handleError := func(v interface{}) {
+			if err := t.run(ctx); err != nil {
 				var subtaskExitStatus = 1
-				if err, ok := v.(exitStatus); ok {
+				if err, ok := err.(exitStatus); ok {
 					subtaskExitStatus = err.ExitStatus()
 				}
 
-				stderr.Flush()
-				fmt.Fprintf(stderr, "FAILURE | %v\n", v)
+				t.stderr.Flush()
+				fmt.Fprintf(t.stderr, "FAILURE | %v\n", err)
 
 				mu.Lock()
 				failedSubtasks = append(failedSubtasks, t)
 				cumulativeExitStatus = max(cumulativeExitStatus, subtaskExitStatus)
 				mu.Unlock()
-			}
-
-			defer func() {
-				if v := recover(); v != nil {
-					handleError(v)
-				}
-			}()
-
-			if err := t.run(ctx); err != nil {
-				handleError(err)
 			}
 		}()
 	}
@@ -345,7 +332,10 @@ type task struct {
 
 	once sync.Once
 	fn   func(context.Context) error
-	err  error
+
+	stdout flushWriter
+	stderr flushWriter
+	err    error
 
 	displayName string
 }
@@ -356,6 +346,16 @@ func (t *task) String() string {
 
 func (t *task) run(ctx context.Context) error {
 	t.once.Do(func() {
+		defer func() {
+			if v := recover(); v != nil {
+				if err, ok := v.(error); ok {
+					t.err = err
+				} else {
+					t.err = fmt.Errorf("%v", v)
+				}
+			}
+		}()
+
 		if Verbose() {
 			logger.Println("Running dependency:", t.displayName)
 		}
