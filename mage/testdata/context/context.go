@@ -18,7 +18,11 @@ func TakesContextNoError(ctx context.Context) {
 }
 
 func Timeout(ctx context.Context) {
-	time.Sleep(200 * time.Millisecond)
+	select {
+	case <-time.After(200 * time.Millisecond):
+	case <-ctx.Done():
+		panic(ctx.Err())
+	}
 }
 
 func TakesContextWithError(ctx context.Context) error {

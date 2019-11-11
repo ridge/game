@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -23,8 +24,12 @@ func Deploy() {
 }
 
 // Sleep sleeps 5 seconds.
-func Sleep() {
-	time.Sleep(5 * time.Second)
+func Sleep(ctx context.Context) {
+	select {
+	case <-time.After(5 * time.Second):
+	case <-ctx.Done():
+		panic(ctx.Err())
+	}
 }
 
 func f() {

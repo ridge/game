@@ -76,10 +76,8 @@ func (f Function) TargetName() string {
 	return strings.Join(names, ":")
 }
 
-// ExecCode returns code for the template switch to run the target.
-// It wraps each target call to match the func(context.Context) error that
-// RunTarget requires.
-func (f Function) ExecCode() (string, error) {
+// FnName returns the function name in Go syntax
+func (f Function) FnName() string {
 	name := f.Name
 	if f.Receiver != "" {
 		name = f.Receiver + "{}." + name
@@ -87,42 +85,7 @@ func (f Function) ExecCode() (string, error) {
 	if f.Package != "" {
 		name = f.Package + "." + name
 	}
-
-	if f.IsContext && f.IsError {
-		out := `
-			wrapFn := func(ctx context.Context) error {
-				return %s(ctx)
-			}
-			err := toplevel.RunTarget(ctx, wrapFn)`[1:]
-		return fmt.Sprintf(out, name), nil
-	}
-	if f.IsContext && !f.IsError {
-		out := `
-			wrapFn := func(ctx context.Context) error {
-				%s(ctx)
-				return nil
-			}
-			err := toplevel.RunTarget(ctx, wrapFn)`[1:]
-		return fmt.Sprintf(out, name), nil
-	}
-	if !f.IsContext && f.IsError {
-		out := `
-			wrapFn := func(ctx context.Context) error {
-				return %s()
-			}
-			err := toplevel.RunTarget(ctx, wrapFn)`[1:]
-		return fmt.Sprintf(out, name), nil
-	}
-	if !f.IsContext && !f.IsError {
-		out := `
-			wrapFn := func(ctx context.Context) error {
-				%s()
-				return nil
-			}
-			err := toplevel.RunTarget(ctx, wrapFn)`[1:]
-		return fmt.Sprintf(out, name), nil
-	}
-	return "", fmt.Errorf("Error formatting ExecCode code for %#v", f)
+	return name
 }
 
 // PrimaryPackage parses a package.  If files is non-empty, it will only parse the files given.

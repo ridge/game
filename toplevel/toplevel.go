@@ -1,7 +1,6 @@
 package toplevel
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -84,26 +83,4 @@ Options:
 	}
 
 	return args
-}
-
-// RunTarget runs one Mage target
-func RunTarget(ctx context.Context, fn func(context.Context) error) interface{} {
-	var err interface{}
-	d := make(chan interface{})
-	go func() {
-		defer func() {
-			err := recover()
-			d <- err
-		}()
-		err := fn(ctx)
-		d <- err
-	}()
-	select {
-	case <-ctx.Done():
-		e := ctx.Err()
-		fmt.Printf("ctx err: %v\n", e)
-		return e
-	case err = <-d:
-		return err
-	}
 }

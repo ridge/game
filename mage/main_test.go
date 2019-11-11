@@ -354,7 +354,7 @@ func TestVerbose(t *testing.T) {
 	}
 
 	actual = stderr.String()
-	expected = "Running target: TestVerbose\nhi!\n"
+	expected = "Running dependency: TestVerbose\nhi!\n"
 	if actual != expected {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
@@ -482,20 +482,20 @@ Targets:
 }
 
 func TestTargetError(t *testing.T) {
-	stderr := &bytes.Buffer{}
+	stdout := &bytes.Buffer{}
 	inv := Invocation{
 		Dir:    "./testdata",
-		Stdout: ioutil.Discard,
-		Stderr: stderr,
+		Stdout: stdout,
+		Stderr: os.Stderr,
 		Args:   []string{"returnsnonnilerror"},
 	}
 	code := Invoke(inv)
 	if code != 1 {
 		t.Fatalf("expected 1, but got %v", code)
 	}
-	actual := stderr.String()
-	expected := "Error: bang!\n"
-	if actual != expected {
+	actual := stdout.String()
+	expected := regexp.QuoteMeta(" E #0000 ReturnsNonNilError | FAILURE | bang!\n")
+	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
 }
@@ -522,39 +522,39 @@ func TestStdinCopy(t *testing.T) {
 }
 
 func TestTargetPanics(t *testing.T) {
-	stderr := &bytes.Buffer{}
+	stdout := &bytes.Buffer{}
 	inv := Invocation{
 		Dir:    "./testdata",
-		Stdout: ioutil.Discard,
-		Stderr: stderr,
+		Stdout: stdout,
+		Stderr: os.Stderr,
 		Args:   []string{"panics"},
 	}
 	code := Invoke(inv)
 	if code != 1 {
 		t.Fatalf("expected 1, but got %v", code)
 	}
-	actual := stderr.String()
-	expected := "Error: boom!\n"
-	if actual != expected {
+	actual := stdout.String()
+	expected := regexp.QuoteMeta("E #0000 Panics | FAILURE | boom!\n")
+	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
 }
 
 func TestPanicsErr(t *testing.T) {
-	stderr := &bytes.Buffer{}
+	stdout := &bytes.Buffer{}
 	inv := Invocation{
 		Dir:    "./testdata",
-		Stdout: ioutil.Discard,
-		Stderr: stderr,
+		Stdout: stdout,
+		Stderr: os.Stderr,
 		Args:   []string{"panicserr"},
 	}
 	code := Invoke(inv)
 	if code != 1 {
 		t.Fatalf("expected 1, but got %v", code)
 	}
-	actual := stderr.String()
-	expected := "Error: kaboom!\n"
-	if actual != expected {
+	actual := stdout.String()
+	expected := regexp.QuoteMeta("E #0000 PanicsErr | FAILURE | kaboom!\n")
+	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
 }
@@ -677,7 +677,7 @@ func TestMultipleTargets(t *testing.T) {
 		t.Errorf("expected 0, but got %v", code)
 	}
 	actual := stderr.String()
-	expected := "Running target: TestVerbose\nhi!\nRunning target: ReturnsNilError\n"
+	expected := "Running dependency: TestVerbose\nhi!\nRunning dependency: ReturnsNilError\n"
 	if actual != expected {
 		t.Errorf("expected %q, but got %q", expected, actual)
 	}
@@ -702,13 +702,13 @@ func TestFirstTargetFails(t *testing.T) {
 		t.Errorf("expected 1, but got %v", code)
 	}
 	actual := stderr.String()
-	expected := "Running target: ReturnsNonNilError\nError: bang!\n"
+	expected := "Running dependency: ReturnsNonNilError\n"
 	if actual != expected {
 		t.Errorf("expected %q, but got %q", expected, actual)
 	}
 	actual = stdout.String()
-	expected = ""
-	if actual != expected {
+	expected = regexp.QuoteMeta("E #0000 ReturnsNonNilError | FAILURE | bang!\n")
+	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Errorf("expected %q, but got %q", expected, actual)
 	}
 }
@@ -801,10 +801,10 @@ func TestTimeout(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("expected 1, but got %v, stderr: %q, stdout: %q", code, stderr, stdout)
 	}
-	actual := stderr.String()
-	expected := "Error: context deadline exceeded\n"
+	actual := stdout.String()
+	expected := regexp.QuoteMeta("E #0000 Timeout | FAILURE | context deadline exceeded\n")
 
-	if actual != expected {
+	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
 }
@@ -1354,20 +1354,20 @@ func TestCustomDependency(t *testing.T) {
 	}
 }
 
-var wrongDepRx = regexp.MustCompile("^Error: Invalid type for dependent function.*@ main.FooBar .*magefile.go")
+var wrongDepRx = regexp.MustCompile("Invalid type for dependent function.*@ main.FooBar .*magefile.go")
 
 func TestWrongDependency(t *testing.T) {
-	stderr := &bytes.Buffer{}
+	stdout := &bytes.Buffer{}
 	inv := Invocation{
 		Dir:    "./testdata/wrong_dep",
-		Stderr: stderr,
-		Stdout: ioutil.Discard,
+		Stdout: stdout,
+		Stderr: os.Stderr,
 	}
 	code := Invoke(inv)
 	if code != 1 {
 		t.Fatalf("expected 1, but got %v", code)
 	}
-	actual := stderr.String()
+	actual := stdout.String()
 	if !wrongDepRx.MatchString(actual) {
 		t.Fatalf("expected matching %q, but got %q", wrongDepRx, actual)
 	}

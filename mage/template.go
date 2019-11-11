@@ -73,20 +73,6 @@ func main() {
 	    defer cancel()
 	}
 
-	handleError := func(logger *log.Logger, err interface{}) {
-		if err != nil {
-			logger.Printf("Error: %+v\n", err)
-			type code interface {
-				ExitStatus() int
-			}
-			if c, ok := err.(code); ok {
-				os.Exit(c.ExitStatus())
-			}
-			os.Exit(1)
-		}
-	}
-	_ = handleError
-
 	log.SetFlags(0)
 	if !args.Verbose {
 		log.SetOutput(ioutil.Discard)
@@ -157,6 +143,20 @@ func main() {
 				os.Exit(1)
 		}
 	}
+
+	targetList := map[string]interface{}{}
+
+	{{range .Funcs}}
+		targetList[{{lower .TargetName | printf "%q"}}] = {{.FnName}}
+	{{- end}}
+	{{range .Imports}}
+		{{range .Info.Funcs}}
+			targetList[{{lower .TargetName | printf "%q"}}] = {{.FnName}}
+		{{- end}}
+	{{- end}}
+
+	runTargets := []interface{}{}
+
 	if len(args.Args) < 1 {
 	{{- if .DefaultFunc.Name}}
 		ignoreDefault, _ := strconv.ParseBool(os.Getenv("MAGEFILE_IGNOREDEFAULT"))
@@ -167,9 +167,7 @@ func main() {
 			}
 			return
 		}
-		{{.DefaultFunc.ExecCode}}
-		handleError(logger, err)
-		return
+		runTargets = []interface{}{ {{.DefaultFunc.FnName}} }
 	{{- else}}
 		if err := list(); err != nil {
 			logger.Println("Error:", err)
@@ -177,40 +175,30 @@ func main() {
 		}
 		return
 	{{- end}}
-	}
-	for _, target := range args.Args {
-		switch strings.ToLower(target) {
-		{{range $alias, $func := .Aliases}}
-			case "{{lower $alias}}":
-				target = "{{$func.TargetName}}"
-		{{- end}}
-		}
-		switch strings.ToLower(target) {
-		{{range .Funcs }}
-			case "{{lower .TargetName}}":
-				if args.Verbose {
-					logger.Println("Running target:", "{{.TargetName}}")
-				}
-				{{.ExecCode}}
-				handleError(logger, err)
-		{{- end}}
-		{{range .Imports}}
-		{{$imp := .}}
-			{{range .Info.Funcs }}
-				case "{{lower .TargetName}}":
-					if args.Verbose {
-						logger.Println("Running target:", "{{.TargetName}}")
-					}
-					{{.ExecCode}}
-					handleError(logger, err)
+	} else {
+		for _, target := range args.Args {
+			switch strings.ToLower(target) {
+			{{range $alias, $func := .Aliases}}
+				case "{{lower $alias}}":
+					target = "{{$func.TargetName}}"
 			{{- end}}
-		{{- end}}
-		default:
-			// should be impossible since we check this above.
-			logger.Printf("Unknown target: %q\n", args.Args[0])
+			}
+			runTargets = append(runTargets, targetList[strings.ToLower(target)])
+		}
+	}
+
+	defer func() {
+		if v := recover(); v != nil {
+			type code interface {
+				ExitStatus() int
+			}
+			if c, ok := v.(code); ok {
+				os.Exit(c.ExitStatus())
+			}
 			os.Exit(1)
 		}
-	}
+	}()
+	mg.SerialCtxDeps(ctx, runTargets...)
 }
 
 
