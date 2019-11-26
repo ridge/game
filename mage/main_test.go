@@ -846,95 +846,6 @@ func TestHelpTarget(t *testing.T) {
 	}
 }
 
-func TestHelpAlias(t *testing.T) {
-	stdout := &bytes.Buffer{}
-	inv := Invocation{
-		Dir:    "./testdata/alias",
-		Stdout: stdout,
-		Stderr: ioutil.Discard,
-		Args:   []string{"status"},
-		Help:   true,
-	}
-	code := Invoke(inv)
-	if code != 0 {
-		t.Errorf("expected to exit with code 0, but got %v", code)
-	}
-	actual := stdout.String()
-	expected := "mage status:\n\nPrints status.\n\nAliases: st, stat\n\n"
-	if actual != expected {
-		t.Fatalf("expected %q, but got %q", expected, actual)
-	}
-	inv = Invocation{
-		Dir:    "./testdata/alias",
-		Stdout: stdout,
-		Stderr: ioutil.Discard,
-		Args:   []string{"checkout"},
-		Help:   true,
-	}
-	stdout.Reset()
-	code = Invoke(inv)
-	if code != 0 {
-		t.Errorf("expected to exit with code 0, but got %v", code)
-	}
-	actual = stdout.String()
-	expected = "mage checkout:\n\nAliases: co\n\n"
-	if actual != expected {
-		t.Fatalf("expected %q, but got %q", expected, actual)
-	}
-}
-
-func TestAlias(t *testing.T) {
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	debug.SetOutput(stderr)
-	inv := Invocation{
-		Dir:    "testdata/alias",
-		Stdout: stdout,
-		Stderr: ioutil.Discard,
-		Args:   []string{"status"},
-		Debug:  true,
-	}
-	code := Invoke(inv)
-	if code != 0 {
-		t.Errorf("expected to exit with code 0, but got %v\noutput:\n%s\nstderr:\n%s", code, stdout, stderr)
-	}
-	actual := stdout.String()
-	expected := "alias!\n"
-	if actual != expected {
-		t.Fatalf("expected %q, but got %q", expected, actual)
-	}
-	stdout.Reset()
-	inv.Args = []string{"st"}
-	code = Invoke(inv)
-	if code != 0 {
-		t.Errorf("expected to exit with code 0, but got %v", code)
-	}
-	actual = stdout.String()
-	if actual != expected {
-		t.Fatalf("expected %q, but got %q", expected, actual)
-	}
-}
-
-func TestInvalidAlias(t *testing.T) {
-	stderr := &bytes.Buffer{}
-	log.SetOutput(ioutil.Discard)
-	inv := Invocation{
-		Dir:    "./testdata/invalid_alias",
-		Stdout: ioutil.Discard,
-		Stderr: stderr,
-		Args:   []string{"co"},
-	}
-	code := Invoke(inv)
-	if code != 2 {
-		t.Errorf("expected to exit with code 1, but got %v", code)
-	}
-	actual := stderr.String()
-	expected := "Unknown target specified: co\n"
-	if actual != expected {
-		t.Fatalf("expected %q, but got %q", expected, actual)
-	}
-}
-
 func TestRunCompiledPrintsError(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	logger := log.New(stderr, "", 0)
@@ -1130,7 +1041,7 @@ func TestClean(t *testing.T) {
 		t.Errorf("expected 0, but got %v", code)
 	}
 
-	TestAlias(t) // make sure we've got something in the CACHE_DIR
+	TestCustomDependency(t) // make sure we've got something in the CACHE_DIR
 	files, err := ioutil.ReadDir(mg.CacheDir())
 	if err != nil {
 		t.Error("issue reading file:", err)
@@ -1329,10 +1240,6 @@ func TestNamespaceDefault(t *testing.T) {
 	if stdout.String() != expected {
 		t.Fatalf("expected %q, but got %q", expected, stdout.String())
 	}
-}
-
-func TestAliasToImport(t *testing.T) {
-
 }
 
 func TestCustomDependency(t *testing.T) {

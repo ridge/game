@@ -146,27 +146,6 @@ func TestMageImportsRootImport(t *testing.T) {
 	}
 }
 
-func TestMageImportsAliasToNS(t *testing.T) {
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	inv := Invocation{
-		Dir:    "./testdata/mageimport",
-		Stdout: stdout,
-		Stderr: stderr,
-		Args:   []string{"nsd2"},
-	}
-
-	code := Invoke(inv)
-	if code != 0 {
-		t.Fatalf("expected to exit with code 0, but got %v, stderr:\n%s", code, stderr)
-	}
-	actual := stdout.String()
-	expected := "deploy2\n"
-	if actual != expected {
-		t.Fatalf("expected: %q got: %q", expected, actual)
-	}
-}
-
 func TestMageImportsOneLine(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}

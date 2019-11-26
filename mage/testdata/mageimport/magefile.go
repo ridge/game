@@ -15,12 +15,8 @@ import (
 	// mage:import
 	_ "github.com/magefile/mage/mage/testdata/mageimport/subdir1"
 	// mage:import zz
-	"github.com/magefile/mage/mage/testdata/mageimport/subdir2"
+	mage "github.com/magefile/mage/mage/testdata/mageimport/subdir2"
 )
-
-var Aliases = map[string]interface{}{
-	"nsd2": mage.NS.Deploy2,
-}
 
 var Default = mage.NS.Deploy2
 

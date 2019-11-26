@@ -415,7 +415,6 @@ type mainfileTemplateData struct {
 	Description string
 	Funcs       []*parse.Function
 	DefaultFunc parse.Function
-	Aliases     map[string]*parse.Function
 	Imports     []*parse.Import
 	BinaryName  string
 	Module      string
@@ -585,7 +584,7 @@ func Compile(goos, goarch, magePath, goCmd, compileTo string, gofiles []string, 
 }
 
 // GenerateMainfile generates the mage mainfile at path.
-func GenerateMainfile(binaryName, path string, info *parse.PkgInfo, module string) error {
+func GenerateMainfile(binaryName, path string, info *parse.PrimaryPkgInfo, module string) error {
 	debug.Println("Creating mainfile at", path)
 
 	f, err := os.Create(path)
@@ -596,7 +595,6 @@ func GenerateMainfile(binaryName, path string, info *parse.PkgInfo, module strin
 	data := mainfileTemplateData{
 		Description: info.Description,
 		Funcs:       info.Funcs,
-		Aliases:     info.Aliases,
 		Imports:     info.Imports,
 		BinaryName:  binaryName,
 		Module:      module,

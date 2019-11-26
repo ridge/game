@@ -25,42 +25,45 @@ func EnableDebug() {
 	debug.SetOutput(os.Stderr)
 }
 
+// PrimaryPkgInfo contains information about a primary build package
+type PrimaryPkgInfo struct {
+	*PkgInfo
+	DefaultFunc *Function
+	Imports     []*Import
+}
+
 // PkgInfo contains inforamtion about a package of files according to mage's
 // parsing rules.
 type PkgInfo struct {
-	AstPkg      *ast.Package
-	DocPkg      *doc.Package
 	Description string
 	Funcs       []*Function
-	DefaultFunc *Function
-	Aliases     map[string]*Function
-	Imports     []*Import
 }
 
 // Function represented a job function from a mage file
 type Function struct {
-	PkgAlias   string
-	Package    string
-	ImportPath string
-	Name       string
-	Receiver   string
-	IsError    bool
-	IsContext  bool
-	Synopsis   string
-	Comment    string
+	Synopsis string
+	Comment  string
+
+	name       string
+	receiver   string
+	pkgAlias   string
+	pkg        string
+	importPath string
+	isError    bool
+	isContext  bool
 }
 
 // ID returns user-readable information about where this function is defined.
 func (f Function) ID() string {
 	path := "<current>"
-	if f.ImportPath != "" {
-		path = f.ImportPath
+	if f.importPath != "" {
+		path = f.importPath
 	}
 	receiver := ""
-	if f.Receiver != "" {
-		receiver = f.Receiver + "."
+	if f.receiver != "" {
+		receiver = f.receiver + "."
 	}
-	return fmt.Sprintf("%s.%s%s", path, receiver, f.Name)
+	return fmt.Sprintf("%s.%s%s", path, receiver, f.name)
 }
 
 // TargetName returns the name of the target as it should appear when used from
@@ -68,7 +71,7 @@ func (f Function) ID() string {
 func (f Function) TargetName() string {
 	var names []string
 
-	for _, s := range []string{f.PkgAlias, f.Receiver, f.Name} {
+	for _, s := range []string{f.pkgAlias, f.receiver, f.name} {
 		if s != "" {
 			names = append(names, s)
 		}
@@ -78,35 +81,38 @@ func (f Function) TargetName() string {
 
 // FnName returns the function name in Go syntax
 func (f Function) FnName() string {
-	name := f.Name
-	if f.Receiver != "" {
-		name = f.Receiver + "{}." + name
+	name := f.name
+	if f.receiver != "" {
+		name = f.receiver + "{}." + name
 	}
-	if f.Package != "" {
-		name = f.Package + "." + name
+	if f.pkg != "" {
+		name = f.pkg + "." + name
 	}
 	return name
 }
 
 // PrimaryPackage parses a package.  If files is non-empty, it will only parse the files given.
-func PrimaryPackage(gocmd, path string, files []string) (*PkgInfo, error) {
-	info, err := Package(path, files)
+func PrimaryPackage(gocmd, path string, files []string) (*PrimaryPkgInfo, error) {
+	info, astPkg, docPkg, err := Package(path, files)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := setImports(gocmd, info); err != nil {
+	imports, err := getImports(gocmd, info.Funcs, astPkg)
+	if err != nil {
 		return nil, err
 	}
 
-	setDefault(info)
-	setAliases(info)
-	return info, nil
+	return &PrimaryPkgInfo{
+		PkgInfo:     info,
+		Imports:     imports,
+		DefaultFunc: getDefault(info.Funcs, imports, docPkg),
+	}, nil
 }
 
-func checkDupes(info *PkgInfo, imports []*Import) error {
+func checkDupes(ifuncs []*Function, imports []*Import) error {
 	funcs := map[string][]*Function{}
-	for _, f := range info.Funcs {
+	for _, f := range ifuncs {
 		funcs[strings.ToLower(f.TargetName())] = append(funcs[strings.ToLower(f.TargetName())], f)
 	}
 	for _, imp := range imports {
@@ -114,16 +120,6 @@ func checkDupes(info *PkgInfo, imports []*Import) error {
 			target := strings.ToLower(f.TargetName())
 			funcs[target] = append(funcs[target], f)
 		}
-	}
-	for alias, f := range info.Aliases {
-		if len(funcs[alias]) != 0 {
-			var ids []string
-			for _, f := range funcs[alias] {
-				ids = append(ids, f.ID())
-			}
-			return fmt.Errorf("alias %q duplicates existing target(s): %s\n", alias, strings.Join(ids, ", "))
-		}
-		funcs[alias] = append(funcs[alias], f)
 	}
 	var dupes []string
 	for target, list := range funcs {
@@ -146,7 +142,7 @@ func checkDupes(info *PkgInfo, imports []*Import) error {
 }
 
 // Package compiles information about a mage package.
-func Package(path string, files []string) (*PkgInfo, error) {
+func Package(path string, files []string) (*PkgInfo, *ast.Package, *doc.Package, error) {
 	start := time.Now()
 	defer func() {
 		debug.Println("time parse Magefiles:", time.Since(start))
@@ -154,30 +150,27 @@ func Package(path string, files []string) (*PkgInfo, error) {
 	fset := token.NewFileSet()
 	pkg, err := getPackage(path, files, fset)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	p := doc.New(pkg, "./", 0)
 	pi := &PkgInfo{
-		AstPkg:      pkg,
-		DocPkg:      p,
 		Description: toOneLine(p.Doc),
 	}
 
-	setNamespaces(pi)
-	setFuncs(pi)
+	pi.Funcs = append(pi.Funcs, getNamespacedFuncs(p)...)
+	pi.Funcs = append(pi.Funcs, getFuncs(p)...)
 
-	hasDupes, names := checkDupeTargets(pi)
-	if hasDupes {
+	if hasDupes, names := checkDupeTargets(pi.Funcs); hasDupes {
 		msg := "Build targets must be case insensitive, thus the following targets conflict:\n"
 		for _, v := range names {
 			if len(v) > 1 {
 				msg += "  " + strings.Join(v, ", ") + "\n"
 			}
 		}
-		return nil, errors.New(msg)
+		return nil, nil, nil, errors.New(msg)
 	}
 
-	return pi, nil
+	return pi, pkg, p, nil
 }
 
 func getNamedImports(gocmd string, pkgs map[string]string) ([]*Import, error) {
@@ -204,28 +197,28 @@ func getImport(gocmd, importpath, alias string) (*Import, error) {
 	}
 	dir, name := parts[0], parts[1]
 	debug.Printf("parsing imported package %q from dir %q", importpath, dir)
-	info, err := Package(dir, nil)
+	info, _, _, err := Package(dir, nil)
 	if err != nil {
 		return nil, err
 	}
 	for i := range info.Funcs {
-		debug.Printf("setting alias %q and package %q on func %v", alias, name, info.Funcs[i].Name)
-		info.Funcs[i].PkgAlias = alias
-		info.Funcs[i].ImportPath = importpath
+		debug.Printf("setting alias %q and package %q on func %v", alias, name, info.Funcs[i].name)
+		info.Funcs[i].pkgAlias = alias
+		info.Funcs[i].importPath = importpath
 	}
-	return &Import{Alias: alias, Name: name, Path: importpath, Info: *info}, nil
+	return &Import{Name: name, Path: importpath, Info: *info}, nil
 }
 
 type Import struct {
-	Alias      string
 	Name       string
 	UniqueName string // a name unique across all imports
 	Path       string
 	Info       PkgInfo
 }
 
-func setFuncs(pi *PkgInfo) {
-	for _, f := range pi.DocPkg.Funcs {
+func getFuncs(docPkg *doc.Package) []*Function {
+	output := []*Function{}
+	for _, f := range docPkg.Funcs {
 		if f.Recv != "" {
 			debug.Printf("skipping method %s.%s", f.Recv, f.Name)
 			// skip methods
@@ -238,25 +231,27 @@ func setFuncs(pi *PkgInfo) {
 		}
 		if typ := funcType(f.Decl.Type); typ != invalidType {
 			debug.Printf("found target %v", f.Name)
-			pi.Funcs = append(pi.Funcs, &Function{
-				Name:      f.Name,
+			output = append(output, &Function{
+				name:      f.Name,
 				Comment:   toOneLine(f.Doc),
 				Synopsis:  sanitizeSynopsis(f),
-				IsError:   typ == errorType || typ == contextErrorType,
-				IsContext: typ == contextVoidType || typ == contextErrorType,
+				isError:   typ == errorType || typ == contextErrorType,
+				isContext: typ == contextVoidType || typ == contextErrorType,
 			})
 		} else {
 			debug.Printf("skipping function with invalid signature func %s(%v)(%v)", f.Name, fieldNames(f.Decl.Type.Params), fieldNames(f.Decl.Type.Results))
 		}
 	}
+	return output
 }
 
-func setNamespaces(pi *PkgInfo) {
-	for _, t := range pi.DocPkg.Types {
+func getNamespacedFuncs(docPkg *doc.Package) []*Function {
+	output := []*Function{}
+	for _, t := range docPkg.Types {
 		if !isNamespace(t) {
 			continue
 		}
-		debug.Printf("found namespace %s %s", pi.DocPkg.ImportPath, t.Name)
+		debug.Printf("found namespace %s %s", docPkg.ImportPath, t.Name)
 		for _, f := range t.Methods {
 			if !ast.IsExported(f.Name) {
 				continue
@@ -265,23 +260,24 @@ func setNamespaces(pi *PkgInfo) {
 			if typ == invalidType {
 				continue
 			}
-			debug.Printf("found namespace method %s %s.%s", pi.DocPkg.ImportPath, t.Name, f.Name)
-			pi.Funcs = append(pi.Funcs, &Function{
-				Name:      f.Name,
-				Receiver:  t.Name,
+			debug.Printf("found namespace method %s %s.%s", docPkg.ImportPath, t.Name, f.Name)
+			output = append(output, &Function{
+				name:      f.Name,
+				receiver:  t.Name,
 				Comment:   toOneLine(f.Doc),
 				Synopsis:  sanitizeSynopsis(f),
-				IsError:   typ == errorType || typ == contextErrorType,
-				IsContext: typ == contextVoidType || typ == contextErrorType,
+				isError:   typ == errorType || typ == contextErrorType,
+				isContext: typ == contextVoidType || typ == contextErrorType,
 			})
 		}
 	}
+	return output
 }
 
-func setImports(gocmd string, pi *PkgInfo) error {
+func getImports(gocmd string, funcs []*Function, astPkg *ast.Package) ([]*Import, error) {
 	importNames := map[string]string{}
 	rootImports := []string{}
-	for _, f := range pi.AstPkg.Files {
+	for _, f := range astPkg.Files {
 		for _, d := range f.Decls {
 			gen, ok := d.(*ast.GenDecl)
 			if !ok || gen.Tok != token.IMPORT {
@@ -300,7 +296,7 @@ func setImports(gocmd string, pi *PkgInfo) error {
 				if alias != "" {
 					debug.Printf("found %s: %s (%s)", importTag, name, alias)
 					if importNames[alias] != "" {
-						return fmt.Errorf("duplicate import alias: %q", alias)
+						return nil, fmt.Errorf("duplicate import alias: %q", alias)
 					}
 					importNames[alias] = name
 				} else {
@@ -312,17 +308,17 @@ func setImports(gocmd string, pi *PkgInfo) error {
 	}
 	imports, err := getNamedImports(gocmd, importNames)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, s := range rootImports {
 		imp, err := getImport(gocmd, s, "")
 		if err != nil {
-			return err
+			return nil, err
 		}
 		imports = append(imports, imp)
 	}
-	if err := checkDupes(pi, imports); err != nil {
-		return err
+	if err := checkDupes(funcs, imports); err != nil {
+		return nil, err
 	}
 
 	// have to set unique package names on imports
@@ -337,11 +333,10 @@ func setImports(gocmd string, pi *PkgInfo) error {
 		used[unique] = true
 		imp.UniqueName = unique
 		for _, f := range imp.Info.Funcs {
-			f.Package = unique
+			f.pkg = unique
 		}
 	}
-	pi.Imports = imports
-	return nil
+	return imports, nil
 }
 
 func getImportPath(imp *ast.ImportSpec) (path, alias string, ok bool) {
@@ -423,19 +418,19 @@ func fieldNames(flist *ast.FieldList) string {
 }
 
 // checkDupeTargets checks a package for duplicate target names.
-func checkDupeTargets(info *PkgInfo) (hasDupes bool, names map[string][]string) {
+func checkDupeTargets(funcs []*Function) (hasDupes bool, names map[string][]string) {
 	names = map[string][]string{}
 	lowers := map[string]bool{}
-	for _, f := range info.Funcs {
-		low := strings.ToLower(f.Name)
-		if f.Receiver != "" {
-			low = strings.ToLower(f.Receiver) + ":" + low
+	for _, f := range funcs {
+		low := strings.ToLower(f.name)
+		if f.receiver != "" {
+			low = strings.ToLower(f.receiver) + ":" + low
 		}
 		if lowers[low] {
 			hasDupes = true
 		}
 		lowers[low] = true
-		names[low] = append(names[low], f.Name)
+		names[low] = append(names[low], f.name)
 	}
 	return hasDupes, names
 }
@@ -457,8 +452,8 @@ func sanitizeSynopsis(f *doc.Func) string {
 	return synopsis
 }
 
-func setDefault(pi *PkgInfo) {
-	for _, v := range pi.DocPkg.Vars {
+func getDefault(funcs []*Function, imports []*Import, docPkg *doc.Package) *Function {
+	for _, v := range docPkg.Vars {
 		for x, name := range v.Names {
 			if name != "Default" {
 				continue
@@ -468,15 +463,15 @@ func setDefault(pi *PkgInfo) {
 				log.Println("warning: default declaration has multiple values")
 			}
 
-			f, err := getFunction(spec.Values[0], pi)
+			f, err := getFunction(spec.Values[0], funcs, imports)
 			if err != nil {
 				log.Println("warning, default declaration malformed:", err)
-				return
+				return nil
 			}
-			pi.DefaultFunc = f
-			return
+			return f
 		}
 	}
+	return nil
 }
 
 func lit2string(l *ast.BasicLit) (string, bool) {
@@ -486,56 +481,7 @@ func lit2string(l *ast.BasicLit) (string, bool) {
 	return strings.Trim(l.Value, `"`), true
 }
 
-func setAliases(pi *PkgInfo) {
-	for _, v := range pi.DocPkg.Vars {
-		for x, name := range v.Names {
-			if name != "Aliases" {
-				continue
-			}
-			spec, ok := v.Decl.Specs[x].(*ast.ValueSpec)
-			if !ok {
-				log.Println("warning: aliases declaration is not a value")
-				return
-			}
-			if len(spec.Values) != 1 {
-				log.Println("warning: aliases declaration has multiple values")
-			}
-			comp, ok := spec.Values[0].(*ast.CompositeLit)
-			if !ok {
-				log.Println("warning: aliases declaration is not a map")
-				return
-			}
-			pi.Aliases = map[string]*Function{}
-			for _, elem := range comp.Elts {
-				kv, ok := elem.(*ast.KeyValueExpr)
-				if !ok {
-					log.Printf("warning: alias declaration %q is not a map element", elem)
-					continue
-				}
-				k, ok := kv.Key.(*ast.BasicLit)
-				if !ok || k.Kind != token.STRING {
-					log.Printf("warning: alias key is not a string literal %q", elem)
-					continue
-				}
-
-				alias, ok := lit2string(k)
-				if !ok {
-					log.Println("warning: malformed name for alias", elem)
-					continue
-				}
-				f, err := getFunction(kv.Value, pi)
-				if err != nil {
-					log.Printf("warning, alias malformed: %v", err)
-					continue
-				}
-				pi.Aliases[alias] = f
-			}
-			return
-		}
-	}
-}
-
-func getFunction(exp ast.Expr, pi *PkgInfo) (*Function, error) {
+func getFunction(exp ast.Expr, funcs []*Function, imports []*Import) (*Function, error) {
 
 	// selector expressions are in LIFO format.
 	// So, in  foo.bar.baz the first selector.Name is
@@ -559,16 +505,16 @@ func getFunction(exp ast.Expr, pi *PkgInfo) (*Function, error) {
 			// "foo" : baz.bar
 			// this is either a namespace or package
 			firstname := x.Name
-			for _, f := range pi.Funcs {
-				if firstname == f.Receiver && funcname == f.Name {
+			for _, f := range funcs {
+				if firstname == f.receiver && funcname == f.name {
 					return f, nil
 				}
 			}
 			// not a namespace, let's try imported packages
-			for _, imp := range pi.Imports {
+			for _, imp := range imports {
 				if firstname == imp.Name {
 					for _, f := range imp.Info.Funcs {
-						if funcname == f.Name {
+						if funcname == f.name {
 							return f, nil
 						}
 					}
@@ -596,17 +542,17 @@ func getFunction(exp ast.Expr, pi *PkgInfo) (*Function, error) {
 		return nil, fmt.Errorf("target %s is not a function", exp)
 	}
 	if pkg == "" {
-		for _, f := range pi.Funcs {
-			if f.Name == funcname && f.Receiver == receiver {
+		for _, f := range funcs {
+			if f.name == funcname && f.receiver == receiver {
 				return f, nil
 			}
 		}
 		return nil, fmt.Errorf("unknown function %s.%s", receiver, funcname)
 	}
-	for _, imp := range pi.Imports {
+	for _, imp := range imports {
 		if imp.Name == pkg {
 			for _, f := range imp.Info.Funcs {
-				if f.Name == funcname && f.Receiver == receiver {
+				if f.name == funcname && f.receiver == receiver {
 					return f, nil
 				}
 			}
