@@ -602,7 +602,8 @@ func hasContextParam(ft *ast.FuncType) bool {
 	if !ok {
 		return false
 	}
-	if pkg.Name != "context" {
+	// FIXME (misha): Use full import path instead of local name
+	if pkg.Name != "context" && pkg.Name != "task" {
 		return false
 	}
 	return sel.Sel.Name == "Context"

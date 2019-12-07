@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/magefile/mage/task"
 )
 
 var module string
@@ -26,17 +28,17 @@ var logger = log.New(os.Stderr, "", 0)
 type taskMap struct {
 	mu     *sync.Mutex
 	nextID int
-	m      map[string]*task
+	m      map[string]*mgtask
 }
 
-func (tm *taskMap) Register(d dep) *task {
+func (tm *taskMap) Register(d dep) *mgtask {
 	name := d.Identify()
 
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
 	if _, ok := tm.m[name]; !ok {
-		tm.m[name] = &task{
+		tm.m[name] = &mgtask{
 			id:          tm.nextID,
 			fn:          d.Run,
 			displayName: displayName(name),
@@ -48,7 +50,7 @@ func (tm *taskMap) Register(d dep) *task {
 
 var tasks = &taskMap{
 	mu: &sync.Mutex{},
-	m:  map[string]*task{},
+	m:  map[string]*mgtask{},
 }
 
 type contextKey string
@@ -58,29 +60,29 @@ const (
 )
 
 // Stdout returns a local stdout stream if assigned to the context, or os.Stdout otherwise
-func Stdout(ctx context.Context) io.Writer {
+func Stdout(ctx task.Context) io.Writer {
 	val := ctx.Value(taskContextKey)
 	if val == nil {
 		return os.Stdout
 	}
-	return val.(*task).stdout
+	return val.(*mgtask).stdout
 }
 
 // Stderr returns a local stderr stream if assigned to the context, or os.Stderr otherwise
-func Stderr(ctx context.Context) io.Writer {
+func Stderr(ctx task.Context) io.Writer {
 	val := ctx.Value(taskContextKey)
 	if val == nil {
 		return os.Stderr
 	}
-	return val.(*task).stderr
+	return val.(*mgtask).stderr
 }
 
-func ctxTask(ctx context.Context) *task {
+func ctxTask(ctx task.Context) *mgtask {
 	val := ctx.Value(taskContextKey)
 	if val == nil {
 		return nil
 	}
-	return val.(*task)
+	return val.(*mgtask)
 }
 
 // SerialDeps is like Deps except it runs each dependency serially, instead of
@@ -97,7 +99,7 @@ func SerialDeps(fns ...interface{}) {
 // SerialCtxDeps is like CtxDeps except it runs each dependency serially,
 // instead of in parallel. This can be useful for resource intensive
 // dependencies that shouldn't be run at the same time.
-func SerialCtxDeps(ctx context.Context, fns ...interface{}) {
+func SerialCtxDeps(ctx task.Context, fns ...interface{}) {
 	deps := wrapFns(fns)
 	for i := range deps {
 		runDeps(ctx, deps[i:i+1])
@@ -108,8 +110,8 @@ func SerialCtxDeps(ctx context.Context, fns ...interface{}) {
 // Dependencies must only be of type:
 //     func()
 //     func() error
-//     func(context.Context)
-//     func(context.Context) error
+//     func(task.Context)
+//     func(task.Context) error
 // Or a similar method on a mg.Namespace type.
 //
 // The function calling Deps is guaranteed that all dependent functions will be
@@ -117,7 +119,7 @@ func SerialCtxDeps(ctx context.Context, fns ...interface{}) {
 // their own dependencies using Deps. Each dependency is run in their own
 // goroutines. Each function is given the context provided if the function
 // prototype allows for it.
-func CtxDeps(ctx context.Context, fns ...interface{}) {
+func CtxDeps(ctx task.Context, fns ...interface{}) {
 	deps := wrapFns(fns)
 	runDeps(ctx, deps)
 }
@@ -140,8 +142,8 @@ func plural(name string, count int) string {
 const shortTaskThreshold = 10 * time.Millisecond
 
 // runDeps assumes you've already called wrapFns.
-func runDeps(ctx context.Context, deps []dep) {
-	finishedCh := make(chan *task, len(deps))
+func runDeps(ctx task.Context, deps []dep) {
+	finishedCh := make(chan *mgtask, len(deps))
 
 	for _, dep := range deps {
 		t := tasks.Register(dep)
@@ -159,7 +161,7 @@ func runDeps(ctx context.Context, deps []dep) {
 	t := ctxTask(ctx)
 	start := time.Now()
 
-	failedSubtasks := []*task{}
+	failedSubtasks := []*mgtask{}
 	cumulativeExitStatus := 1
 	for i := 0; i < len(deps); i++ {
 		subt := <-finishedCh
@@ -206,8 +208,8 @@ func wrapFns(fns []interface{}) []dep {
 // only be of type:
 //     func()
 //     func() error
-//     func(context.Context)
-//     func(context.Context) error
+//     func(task.Context)
+//     func(task.Context) error
 // Or a similar method on a mg.Namespace type.
 //
 // This is a way to build up a tree of dependencies with each dependency
@@ -219,7 +221,7 @@ func Deps(fns ...interface{}) {
 
 type dep interface {
 	Identify() string
-	Run(context.Context) error
+	Run(task.Context) error
 }
 
 type voidFn func()
@@ -228,7 +230,7 @@ func (vf voidFn) Identify() string {
 	return name(vf)
 }
 
-func (vf voidFn) Run(ctx context.Context) error {
+func (vf voidFn) Run(ctx task.Context) error {
 	vf()
 	return nil
 }
@@ -239,28 +241,28 @@ func (ef errorFn) Identify() string {
 	return name(ef)
 }
 
-func (ef errorFn) Run(ctx context.Context) error {
+func (ef errorFn) Run(ctx task.Context) error {
 	return ef()
 }
 
-type contextVoidFn func(context.Context)
+type contextVoidFn func(task.Context)
 
 func (cvf contextVoidFn) Identify() string {
 	return name(cvf)
 }
 
-func (cvf contextVoidFn) Run(ctx context.Context) error {
+func (cvf contextVoidFn) Run(ctx task.Context) error {
 	cvf(ctx)
 	return nil
 }
 
-type contextErrorFn func(context.Context) error
+type contextErrorFn func(task.Context) error
 
 func (cef contextErrorFn) Identify() string {
 	return name(cef)
 }
 
-func (cef contextErrorFn) Run(ctx context.Context) error {
+func (cef contextErrorFn) Run(ctx task.Context) error {
 	return cef(ctx)
 }
 
@@ -282,7 +284,7 @@ func (nvf namespaceVoidFn) Identify() string {
 	return name(nvf.fn)
 }
 
-func (nvf namespaceVoidFn) Run(ctx context.Context) error {
+func (nvf namespaceVoidFn) Run(ctx task.Context) error {
 	v := reflect.ValueOf(nvf.fn)
 	v.Call(namespaceArg)
 	return nil
@@ -296,7 +298,7 @@ func (nef namespaceErrorFn) Identify() string {
 	return name(nef.fn)
 }
 
-func (nef namespaceErrorFn) Run(ctx context.Context) error {
+func (nef namespaceErrorFn) Run(ctx task.Context) error {
 	v := reflect.ValueOf(nef.fn)
 	return errorRet(v.Call(namespaceArg))
 }
@@ -309,7 +311,7 @@ func (ncvf namespaceContextVoidFn) Identify() string {
 	return name(ncvf.fn)
 }
 
-func (ncvf namespaceContextVoidFn) Run(ctx context.Context) error {
+func (ncvf namespaceContextVoidFn) Run(ctx task.Context) error {
 	v := reflect.ValueOf(ncvf.fn)
 	v.Call(append(namespaceArg, reflect.ValueOf(ctx)))
 	return nil
@@ -323,7 +325,7 @@ func (ncef namespaceContextErrorFn) Identify() string {
 	return name(ncef.fn)
 }
 
-func (ncef namespaceContextErrorFn) Run(ctx context.Context) error {
+func (ncef namespaceContextErrorFn) Run(ctx task.Context) error {
 	v := reflect.ValueOf(ncef.fn)
 	return errorRet(v.Call(append(namespaceArg, reflect.ValueOf(ctx))))
 }
@@ -340,11 +342,11 @@ func displayName(name string) string {
 	return strings.TrimPrefix(name, module+"/")
 }
 
-type task struct {
+type mgtask struct {
 	id int
 
 	once sync.Once
-	fn   func(context.Context) error
+	fn   func(task.Context) error
 
 	stdout           flushWriter
 	stderr           flushWriter
@@ -355,13 +357,13 @@ type task struct {
 	displayName string
 }
 
-func (t *task) String() string {
+func (t *mgtask) String() string {
 	return fmt.Sprintf("#%04d %s", t.id, t.displayName)
 }
 
 const smallTaskThreshold = 10 * time.Millisecond
 
-func (t *task) run(ctx context.Context) error {
+func (t *mgtask) run(ctx task.Context) error {
 	t.once.Do(func() {
 		start := time.Now()
 		defer func() {
@@ -418,13 +420,13 @@ func wrapFn(fn interface{}) (dep, error) {
 		return voidFn(typedFn), nil
 	case func() error:
 		return errorFn(typedFn), nil
-	case func(context.Context):
+	case func(task.Context):
 		return contextVoidFn(typedFn), nil
-	case func(context.Context) error:
+	case func(task.Context) error:
 		return contextErrorFn(typedFn), nil
 	}
 
-	err := fmt.Errorf("Invalid type for dependent function: %T. Dependencies must be func(), func() error, func(context.Context), func(context.Context) error, or the same method on an mg.Namespace @ %s", fn, causeLocation())
+	err := fmt.Errorf("Invalid type for dependent function: %T. Dependencies must be func(), func() error, func(task.Context), func(task.Context) error, or the same method on an mg.Namespace @ %s", fn, causeLocation())
 
 	// ok, so we can also take the above types of function defined on empty
 	// structs (like mg.Namespace). When you pass a method of a type, it gets
