@@ -12,13 +12,10 @@ import (
 	{{range .Imports}}{{.UniqueName}} "{{.Path}}"
 	{{end}}
 
-	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/toplevel"
 )
 
 func main() {
-	mg.SetModule("{{.Module}}")
-
 	tlt := []toplevel.Target{
 {{- range .Funcs}}
 		toplevel.Target{Name: {{lowerFirst .TargetName | printf "%q"}},
@@ -41,7 +38,8 @@ func main() {
 
 	toplevel.Main({{printf "%q" $.BinaryName}}, tlt,
 		{{lowerFirst .DefaultFunc.TargetName | printf "%q"}},
-		{{printf "%q" .Description}})
+		{{printf "%q" .Description}},
+		{{.Module | printf "%q"}})
 }
 
 

@@ -8,13 +8,66 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
 	"github.com/magefile/mage/mg"
+	"github.com/magefile/mage/task"
 )
+
+type consoleReporter struct {
+}
+
+const timeFormat = "2006-01-02 15:04:05.000Z07:00"
+
+func printLine(t *task.Task, time time.Time, tag string, line string) {
+	fmt.Printf("%s %s %s | %s", time.Format(timeFormat), tag,
+		t.String(), line)
+}
+
+func (consoleReporter) Started(t *task.Task) {
+	printLine(t, time.Now(), " ", "STARTED\n")
+}
+
+func (consoleReporter) Dependencies(dependent *task.Task, dependees []*task.Task) {
+	s := []string{}
+	for _, d := range dependees {
+		s = append(s, d.String())
+	}
+	printLine(dependent, time.Now(), " ", "-> "+strings.Join(s, ", ")+"\n")
+}
+
+func (consoleReporter) Finished(t *task.Task) {
+	tag := "SUCCEEDED"
+	if t.Error != nil {
+		tag = "FAILED"
+		msg := t.Error.Error()
+		if !strings.HasSuffix(msg, "\n") {
+			msg += "\n"
+		}
+		for _, line := range strings.SplitAfter(msg, "\n") {
+			if line == "" {
+				continue
+			}
+			printLine(t, t.End(), "E", line)
+		}
+	}
+	dur := t.Duration()
+	self := t.SelfDuration()
+	printLine(t, t.End(), " ", fmt.Sprintf("%s | time=%.02fs, self=%.02fs, subtasks=%.02fs\n",
+		tag, dur.Seconds(), self.Seconds(), (dur-self).Seconds()))
+}
+
+func (consoleReporter) OutputLine(t *task.Task, time time.Time, stream task.Stream, line string) {
+	tag := " "
+	if stream == task.StderrStream {
+		tag = "E"
+	}
+	printLine(t, time, tag, line)
+}
 
 // Target is one build target
 type Target struct {
@@ -89,8 +142,32 @@ func findTarget(haystack []Target, needle string) *Target {
 	return nil
 }
 
+func printMultilineIndented(prefix, msg string) {
+	spacePrefix := strings.Repeat(" ", len(prefix))
+
+	lines := strings.Split(msg, "\n")
+	fmt.Printf("%s%s\n", prefix, lines[0])
+	for _, line := range lines[1:] {
+		fmt.Printf("%s%s\n", spacePrefix, line)
+	}
+}
+
+func printFailure(t *task.Task, indent int) {
+	prefix := fmt.Sprintf("%s%s failed", strings.Repeat("    ", indent), t.String())
+
+	if subErr, ok := t.Error.(task.SubtasksFailure); ok {
+		fmt.Printf("%s, caused by\n", prefix)
+		for _, subtask := range subErr {
+			printFailure(subtask, indent+1)
+		}
+		return
+	}
+
+	printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
+}
+
 // Main is the main function for generated Mage binary
-func Main(binaryName string, targets []Target, defaultTarget string, desc string) {
+func Main(binaryName string, targets []Target, defaultTarget string, desc string, module string) {
 	verbose := false
 	list := false // print out a list of targets
 	help := false // request target help
@@ -140,6 +217,9 @@ Options:
 		listTargets(targets, defaultTarget, desc)
 	}
 
+	mg.SetModule(module)
+	task.SetReporter(consoleReporter{})
+
 	if len(args) == 0 {
 		if defaultTarget != "" {
 			ignoreDefault, _ := strconv.ParseBool(os.Getenv("MAGEFILE_IGNOREDEFAULT"))
@@ -181,23 +261,28 @@ Options:
 		defer cancel()
 	}
 
-	runTargets := []interface{}{}
-
+	targetFns := []interface{}{}
 	for _, targetName := range args {
 		target := findTarget(targets, strings.ToLower(targetName))
-		runTargets = append(runTargets, target.Fn)
+		targetFns = append(targetFns, target.Fn)
 	}
+
+	runnables := task.MustFuncsToRunnable(module, targetFns)
+	tasks := task.All.Register(runnables)
 
 	defer func() {
 		if v := recover(); v != nil {
-			type code interface {
-				ExitStatus() int
-			}
-			if c, ok := v.(code); ok {
-				os.Exit(c.ExitStatus())
-			}
+			fmt.Printf("Unexpected error: %v\n", v)
+			debug.PrintStack()
 			os.Exit(1)
 		}
 	}()
-	mg.SerialCtxDeps(ctx, runTargets...)
+
+	for _, t := range tasks {
+		t.Run(ctx)
+		if t.Error != nil {
+			printFailure(t, 0)
+			os.Exit(1)
+		}
+	}
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/magefile/mage/internal"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/parse"
-	"github.com/magefile/mage/sh"
 )
 
 // magicRebuildKey is used when hashing the output binary to ensure that we get
@@ -678,6 +677,28 @@ func generateInit(dir string) error {
 	return nil
 }
 
+func cmdRan(err error) bool {
+	switch err := err.(type) {
+	case nil:
+		return true
+	case *exec.ExitError:
+		return err.Exited()
+	default:
+		return false
+	}
+}
+
+func exitStatus(err error) int {
+	switch err := err.(type) {
+	case nil:
+		return 0
+	case *exec.ExitError:
+		return err.ExitCode()
+	default:
+		return 1
+	}
+}
+
 // RunCompiled runs an already-compiled mage command with the given args,
 func RunCompiled(inv Invocation, exePath string, errlog *log.Logger) int {
 	debug.Println("running binary", exePath)
@@ -709,10 +730,10 @@ func RunCompiled(inv Invocation, exePath string, errlog *log.Logger) int {
 	}
 	debug.Print("running magefile with mage vars:\n", strings.Join(filter(c.Env, "MAGEFILE"), "\n"))
 	err := c.Run()
-	if !sh.CmdRan(err) {
+	if !cmdRan(err) {
 		errlog.Printf("failed to run compiled magefile: %v", err)
 	}
-	return sh.ExitStatus(err)
+	return exitStatus(err)
 }
 
 func filter(list []string, prefix string) []string {
