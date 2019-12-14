@@ -31,6 +31,17 @@ type Task struct {
 	Error error // nil if the task succeeded
 }
 
+// StringID formats task ID
+func (t *Task) StringID() string {
+	return fmt.Sprintf("#%04d", t.ID)
+}
+
+// Name formats task name
+
+func (t *Task) Name() string {
+	return t.Runnable.Name()
+}
+
 func (t *Task) String() string {
 	return fmt.Sprintf("#%04d %s", t.ID, t.Runnable.Name())
 }

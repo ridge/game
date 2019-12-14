@@ -21,15 +21,8 @@ import (
 type consoleReporter struct {
 }
 
-const timeFormat = "2006-01-02 15:04:05.000Z07:00"
-
-func printLine(t *task.Task, time time.Time, tag string, line string) {
-	fmt.Printf("%s %s %s | %s", time.Format(timeFormat), tag,
-		t.String(), line)
-}
-
 func (consoleReporter) Started(t *task.Task) {
-	printLine(t, time.Now(), " ", "STARTED\n")
+	fmt.Printf("%s STARTED %s\n", t.StringID(), t.Name())
 }
 
 func (consoleReporter) Dependencies(dependent *task.Task, dependees []*task.Task) {
@@ -37,10 +30,10 @@ func (consoleReporter) Dependencies(dependent *task.Task, dependees []*task.Task
 	for _, d := range dependees {
 		s = append(s, d.String())
 	}
-	printLine(dependent, time.Now(), " ", "-> "+strings.Join(s, ", ")+"\n")
+	fmt.Printf("%s DEPS %s -> %s\n", dependent.StringID(), dependent.Name(), strings.Join(s, ", "))
 }
 
-func (consoleReporter) Finished(t *task.Task) {
+func (cr consoleReporter) Finished(t *task.Task) {
 	tag := "SUCCEEDED"
 	if t.Error != nil {
 		tag = "FAILED"
@@ -52,13 +45,13 @@ func (consoleReporter) Finished(t *task.Task) {
 			if line == "" {
 				continue
 			}
-			printLine(t, t.End(), "E", line)
+			cr.OutputLine(t, t.End(), task.StderrStream, line)
 		}
 	}
 	dur := t.Duration()
 	self := t.SelfDuration()
-	printLine(t, t.End(), " ", fmt.Sprintf("%s | time=%.02fs, self=%.02fs, subtasks=%.02fs\n",
-		tag, dur.Seconds(), self.Seconds(), (dur-self).Seconds()))
+	fmt.Printf("%s %s %s time=%.02fs, self=%.02fs, subtasks=%.02fs\n",
+		t.StringID(), tag, t.Name(), dur.Seconds(), self.Seconds(), (dur - self).Seconds())
 }
 
 func (consoleReporter) OutputLine(t *task.Task, time time.Time, stream task.Stream, line string) {
@@ -66,7 +59,7 @@ func (consoleReporter) OutputLine(t *task.Task, time time.Time, stream task.Stre
 	if stream == task.StderrStream {
 		tag = "E"
 	}
-	printLine(t, time, tag, line)
+	fmt.Printf("%s %s | %s", t.StringID(), tag, line)
 }
 
 // Target is one build target
