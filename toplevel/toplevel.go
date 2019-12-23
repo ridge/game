@@ -14,7 +14,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/task"
 )
 
@@ -210,7 +209,7 @@ Options:
 		listTargets(targets, defaultTarget, desc)
 	}
 
-	mg.SetModule(module)
+	task.SetModule(module)
 	task.SetReporter(consoleReporter{})
 
 	if len(args) == 0 {
@@ -260,8 +259,7 @@ Options:
 		targetFns = append(targetFns, target.Fn)
 	}
 
-	runnables := task.MustFuncsToRunnable(module, targetFns)
-	tasks := task.All.Register(runnables)
+	tasks := task.All.Register(targetFns)
 
 	defer func() {
 		if v := recover(); v != nil {

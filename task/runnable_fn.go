@@ -10,7 +10,6 @@ import (
 
 var (
 	namespaceArg = []reflect.Value{reflect.ValueOf(struct{}{})}
-	errorType    = reflect.TypeOf((*error)(nil)).Elem()
 	contextType  = reflect.TypeOf((*context.Context)(nil)).Elem()
 )
 
@@ -61,15 +60,6 @@ func (cvf contextVoidFn) Run(ctx context.Context) error {
 	return nil
 }
 
-type contextErrorFn struct {
-	namedFunc
-	fn func(context.Context) error
-}
-
-func (cef contextErrorFn) Run(ctx context.Context) error {
-	return cef.fn(ctx)
-}
-
 func errorRet(ret []reflect.Value) error {
 	val := ret[0].Interface()
 	if val == nil {
@@ -88,15 +78,6 @@ func (nvf namespaceVoidFn) Run(ctx context.Context) error {
 	return nil
 }
 
-type namespaceErrorFn struct {
-	namedFunc
-	fn reflect.Value
-}
-
-func (nef namespaceErrorFn) Run(ctx context.Context) error {
-	return errorRet(nef.fn.Call(namespaceArg))
-}
-
 type namespaceContextVoidFn struct {
 	namedFunc
 	fn reflect.Value
@@ -105,15 +86,6 @@ type namespaceContextVoidFn struct {
 func (ncvf namespaceContextVoidFn) Run(ctx context.Context) error {
 	ncvf.fn.Call([]reflect.Value{namespaceArg[0], reflect.ValueOf(ctx)})
 	return nil
-}
-
-type namespaceContextErrorFn struct {
-	namedFunc
-	fn reflect.Value
-}
-
-func (ncef namespaceContextErrorFn) Run(ctx context.Context) error {
-	return errorRet(ncef.fn.Call([]reflect.Value{namespaceArg[0], reflect.ValueOf(ctx)}))
 }
 
 func boringFunction(f string) bool {
@@ -139,8 +111,8 @@ func causeLocation() string {
 }
 
 func invalidTypeError(fn interface{}) error {
-	return fmt.Errorf("Invalid type for a task function: %T, must be func(), func() error, func(context.Context), "+
-		"func(context.Context) error, or the same method on an mg.Namespace @ %s", fn, causeLocation())
+	return fmt.Errorf("Invalid type for a task function: %T, must be func(), func(context.Context), "+
+		"or the same method on an mg.Namespace @ %s", fn, causeLocation())
 }
 
 // FuncToRunnable converts a function to a Runnable if its signature allows
@@ -163,8 +135,6 @@ func FuncToRunnable(module string, fn interface{}) (Runnable, error) {
 		return errorFn{namedFunc{name}, typedFn}, nil
 	case func(context.Context):
 		return contextVoidFn{namedFunc{name}, typedFn}, nil
-	case func(context.Context) error:
-		return contextErrorFn{namedFunc{name}, typedFn}, nil
 	}
 
 	// mg.Namespace methods
@@ -182,34 +152,24 @@ func FuncToRunnable(module string, fn interface{}) (Runnable, error) {
 	default:
 	}
 
-	switch t.NumOut() {
-	case 0:
-	case 1:
-		if t.Out(0) != errorType {
-			return nil, invalidTypeError(fn)
-		}
-	default:
+	if t.NumOut() != 0 {
 		return nil, invalidTypeError(fn)
 	}
 
 	v := reflect.ValueOf(fn)
 
 	switch {
-	case t.NumIn() == 1 && t.NumOut() == 0:
+	case t.NumIn() == 1:
 		return namespaceVoidFn{namedFunc{name}, v}, nil
-	case t.NumIn() == 1 && t.NumOut() == 1:
-		return namespaceErrorFn{namedFunc{name}, v}, nil
-	case t.NumIn() == 2 && t.NumOut() == 0:
+	case t.NumIn() == 2:
 		return namespaceContextVoidFn{namedFunc{name}, v}, nil
-	case t.NumIn() == 2 && t.NumOut() == 1:
-		return namespaceContextErrorFn{namedFunc{name}, v}, nil
 	default:
 		return nil, invalidTypeError(fn)
 	}
 }
 
-// MustFuncToRunnable converts a function to a Runnable
-func MustFuncToRunnable(module string, fn interface{}) Runnable {
+// mustFuncToRunnable converts a function to a Runnable
+func mustFuncToRunnable(module string, fn interface{}) Runnable {
 	runnable, err := FuncToRunnable(module, fn)
 	if err != nil {
 		panic(err)
@@ -217,11 +177,11 @@ func MustFuncToRunnable(module string, fn interface{}) Runnable {
 	return runnable
 }
 
-// MustFuncsToRunnable converts a list of functions to a list of Runnables
-func MustFuncsToRunnable(module string, fns []interface{}) []Runnable {
+// mustFuncsToRunnable converts a list of functions to a list of Runnables
+func mustFuncsToRunnable(module string, fns []interface{}) []Runnable {
 	rr := make([]Runnable, 0, len(fns))
 	for _, fn := range fns {
-		rr = append(rr, MustFuncToRunnable(module, fn))
+		rr = append(rr, mustFuncToRunnable(module, fn))
 	}
 	return rr
 }
