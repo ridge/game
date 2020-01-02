@@ -3,21 +3,20 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/magefile/mage/mg"
+	"github.com/magefile/mage/task"
 )
 
 // Returns a non-nil error.
-func TakesContextNoError(ctx context.Context) {
+func TakesContextNoError(ctx task.Context) {
 	deadline, _ := ctx.Deadline()
 	fmt.Printf("Context timeout: %v\n", deadline)
 }
 
-func Timeout(ctx context.Context) {
+func Timeout(ctx task.Context) {
 	select {
 	case <-time.After(200 * time.Millisecond):
 	case <-ctx.Done():
@@ -25,10 +24,6 @@ func Timeout(ctx context.Context) {
 	}
 }
 
-func TakesContextWithError(ctx context.Context) error {
-	return errors.New("Something went sideways")
-}
-
-func CtxDeps(ctx context.Context) {
+func CtxDeps(ctx task.Context) {
 	mg.CtxDeps(ctx, TakesContextNoError)
 }

@@ -3,30 +3,20 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/magefile/mage/mg"
+	"github.com/magefile/mage/task"
 )
 
-var Default = NS.Error
+var Default = NS.BareCtx
 
-func TestNamespaceDep() {
-	mg.Deps(NS.Error, NS.Bare, NS.BareCtx, NS.CtxErr)
+func TestNamespaceDep(ctx task.Context) {
+	mg.CtxDeps(ctx, NS.BareCtx)
 }
 
 type NS mg.Namespace
 
-func (NS) Error() error {
+func (NS) BareCtx(ctx task.Context) {
 	fmt.Println("hi!")
-	return nil
-}
-
-func (NS) Bare() {
-}
-
-func (NS) BareCtx(ctx context.Context) {
-}
-func (NS) CtxErr(ctx context.Context) error {
-	return nil
 }

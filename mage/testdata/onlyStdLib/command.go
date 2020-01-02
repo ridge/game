@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/magefile/mage/mg"
+	"github.com/magefile/mage/task"
 )
 
 var Default = SomePig
@@ -22,8 +23,8 @@ func TestVerbose() {
 }
 
 // This is the synopsis for SomePig.  There's more data that won't show up.
-func SomePig() {
-	mg.Deps(f)
+func SomePig(ctx task.Context) {
+	mg.CtxDeps(ctx, f)
 }
 
 func f() {}

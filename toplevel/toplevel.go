@@ -270,7 +270,7 @@ Options:
 	}()
 
 	for _, t := range tasks {
-		t.Run(ctx)
+		t.Run(task.Context{ctx})
 		if t.Error != nil {
 			printFailure(t, 0)
 			os.Exit(1)

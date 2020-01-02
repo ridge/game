@@ -37,13 +37,23 @@ func (t *Task) StringID() string {
 }
 
 // Name formats task name
-
 func (t *Task) Name() string {
-	return t.Runnable.Name()
+	switch r := t.Runnable.(type) {
+	case identifiable:
+		return r.Identify()
+	case fmt.Stringer:
+		return r.String()
+	default:
+		return fmt.Sprintf("%#v", r)
+	}
 }
 
 func (t *Task) String() string {
-	return fmt.Sprintf("#%04d %s", t.ID, t.Runnable.Name())
+	return fmt.Sprintf("#%04d %s", t.ID, t.Name())
+}
+
+func (t *Task) Start() time.Time {
+	return t.Spans[0].Start
 }
 
 // End is the time the task ended
@@ -86,17 +96,17 @@ type taskContext struct {
 	stderr        flushWriter
 }
 
-func taskCtx(ctx context.Context) *taskContext {
+func taskCtx(ctx Context) *taskContext {
 	return ctx.Value(taskContextKey).(*taskContext)
 }
 
 // Stdout returns a stdout writer associated with the current task
-func Stdout(ctx context.Context) io.Writer {
+func Stdout(ctx Context) io.Writer {
 	return taskCtx(ctx).stdout
 }
 
 // Stderr returns a stderr writer associated with the current task
-func Stderr(ctx context.Context) io.Writer {
+func Stderr(ctx Context) io.Writer {
 	return taskCtx(ctx).stderr
 }
 
@@ -106,7 +116,7 @@ func (tc *taskContext) closeSpan(subtasks []*Task) {
 	tc.nextSpanStart = endTime
 }
 
-func (t *Task) run(ctx context.Context) {
+func (t *Task) run(ctx Context) {
 	t.reporter.Started(t)
 
 	stdout, stderr := newStreamLineWriters(t, t.reporter)
@@ -117,7 +127,7 @@ func (t *Task) run(ctx context.Context) {
 		stdout:        stdout,
 		stderr:        stderr,
 	}
-	ctx = context.WithValue(ctx, taskContextKey, tc)
+	ctx.Context = context.WithValue(ctx.Context, taskContextKey, tc)
 
 	defer func() {
 		tc.closeSpan(nil)
@@ -133,11 +143,11 @@ func (t *Task) run(ctx context.Context) {
 		t.reporter.Finished(t)
 	}()
 
-	t.Error = t.Runnable.Run(ctx)
+	t.Runnable.Run(ctx)
 }
 
 // Run runs the task
-func (t *Task) Run(ctx context.Context) {
+func (t *Task) Run(ctx Context) {
 	t.once.Do(func() {
 		t.run(ctx)
 	})
@@ -167,7 +177,7 @@ func (st SubtasksFailure) Error() string {
 // RunSubtasks runs given tasks as subtasks of the task in the context in
 // parallel. All tasks are allowed to finish even if some of them error out, and
 // errors from all subtasks are collected.
-func RunSubtasks(ctx context.Context, subtasks []*Task) {
+func RunSubtasks(ctx Context, subtasks []*Task) {
 	tc := taskCtx(ctx)
 	tc.closeSpan(nil)
 

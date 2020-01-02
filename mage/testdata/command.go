@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/magefile/mage/mg"
+	"github.com/magefile/mage/task"
 )
 
 // This should work as a default - even if it's in a different file
@@ -22,8 +23,8 @@ func TestVerbose() {
 	log.Println("hi!")
 }
 
-func ReturnsVoid() {
-	mg.Deps(f)
+func ReturnsVoid(ctx task.Context) {
+	mg.CtxDeps(ctx, f)
 }
 
 func f() {}

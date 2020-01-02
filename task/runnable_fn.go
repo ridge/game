@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -10,7 +9,7 @@ import (
 
 var (
 	namespaceArg = []reflect.Value{reflect.ValueOf(struct{}{})}
-	contextType  = reflect.TypeOf((*context.Context)(nil)).Elem()
+	contextType  = reflect.TypeOf((*Context)(nil)).Elem()
 )
 
 func funcName(module string, i interface{}) string {
@@ -27,7 +26,8 @@ type namedFunc struct {
 	name string
 }
 
-func (nf namedFunc) Name() string {
+// Functions are not comparable, so we compare them by their names
+func (nf namedFunc) Identify() string {
 	return nf.name
 }
 
@@ -36,9 +36,8 @@ type voidFn struct {
 	fn func()
 }
 
-func (vf voidFn) Run(ctx context.Context) error {
+func (vf voidFn) Run(ctx Context) {
 	vf.fn()
-	return nil
 }
 
 type errorFn struct {
@@ -46,26 +45,19 @@ type errorFn struct {
 	fn func() error
 }
 
-func (ef errorFn) Run(ctx context.Context) error {
-	return ef.fn()
+func (ef errorFn) Run(ctx Context) {
+	if err := ef.fn(); err != nil {
+		panic(err)
+	}
 }
 
 type contextVoidFn struct {
 	namedFunc
-	fn func(context.Context)
+	fn func(Context)
 }
 
-func (cvf contextVoidFn) Run(ctx context.Context) error {
+func (cvf contextVoidFn) Run(ctx Context) {
 	cvf.fn(ctx)
-	return nil
-}
-
-func errorRet(ret []reflect.Value) error {
-	val := ret[0].Interface()
-	if val == nil {
-		return nil
-	}
-	return val.(error)
 }
 
 type namespaceVoidFn struct {
@@ -73,9 +65,8 @@ type namespaceVoidFn struct {
 	fn reflect.Value
 }
 
-func (nvf namespaceVoidFn) Run(ctx context.Context) error {
+func (nvf namespaceVoidFn) Run(ctx Context) {
 	nvf.fn.Call(namespaceArg)
-	return nil
 }
 
 type namespaceContextVoidFn struct {
@@ -83,9 +74,8 @@ type namespaceContextVoidFn struct {
 	fn reflect.Value
 }
 
-func (ncvf namespaceContextVoidFn) Run(ctx context.Context) error {
+func (ncvf namespaceContextVoidFn) Run(ctx Context) {
 	ncvf.fn.Call([]reflect.Value{namespaceArg[0], reflect.ValueOf(ctx)})
-	return nil
 }
 
 func boringFunction(f string) bool {
@@ -111,13 +101,14 @@ func causeLocation() string {
 }
 
 func invalidTypeError(fn interface{}) error {
-	return fmt.Errorf("Invalid type for a task function: %T, must be func(), func(context.Context), "+
+	return fmt.Errorf("Invalid type for a task function: %T, must be func(), func(Context), "+
 		"or the same method on an mg.Namespace @ %s", fn, causeLocation())
 }
 
-// FuncToRunnable converts a function to a Runnable if its signature allows
-func FuncToRunnable(module string, fn interface{}) (Runnable, error) {
+// funcToRunnable converts a function to a Runnable if its signature allows
+func funcToRunnable(module string, fn interface{}) (Runnable, error) {
 	if runnable, ok := fn.(Runnable); ok {
+		// FIXME (misha): check that the fields are good
 		return runnable, nil
 	}
 
@@ -133,7 +124,7 @@ func FuncToRunnable(module string, fn interface{}) (Runnable, error) {
 		return voidFn{namedFunc{name}, typedFn}, nil
 	case func() error:
 		return errorFn{namedFunc{name}, typedFn}, nil
-	case func(context.Context):
+	case func(Context):
 		return contextVoidFn{namedFunc{name}, typedFn}, nil
 	}
 
@@ -168,20 +159,15 @@ func FuncToRunnable(module string, fn interface{}) (Runnable, error) {
 	}
 }
 
-// mustFuncToRunnable converts a function to a Runnable
-func mustFuncToRunnable(module string, fn interface{}) Runnable {
-	runnable, err := FuncToRunnable(module, fn)
-	if err != nil {
-		panic(err)
-	}
-	return runnable
-}
-
 // mustFuncsToRunnable converts a list of functions to a list of Runnables
 func mustFuncsToRunnable(module string, fns []interface{}) []Runnable {
 	rr := make([]Runnable, 0, len(fns))
 	for _, fn := range fns {
-		rr = append(rr, mustFuncToRunnable(module, fn))
+		runnable, err := funcToRunnable(module, fn)
+		if err != nil {
+			panic(err)
+		}
+		rr = append(rr, runnable)
 	}
 	return rr
 }

@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"sync"
 	"time"
 )
@@ -30,14 +29,24 @@ type Registry struct {
 	module   string
 
 	mu     sync.Mutex
-	tasks  map[string]*Task
+	tasks  map[interface{}]*Task
 	nextID int
 }
 
 // Runnable is a named piece of runnable code
 type Runnable interface {
-	Name() string
-	Run(ctx context.Context) error
+	Run(ctx Context)
+}
+
+type identifiable interface {
+	Identify() string
+}
+
+func identify(r Runnable) interface{} {
+	if i, ok := r.(identifiable); ok {
+		return i.Identify()
+	}
+	return r
 }
 
 // Register registers runnable as a task
@@ -49,24 +58,24 @@ func (r *Registry) Register(fns []interface{}) []*Task {
 
 	out := make([]*Task, 0, len(runnables))
 	for _, runnable := range runnables {
-		name := runnable.Name()
+		identity := identify(runnable)
 
-		if _, exists := r.tasks[name]; !exists {
-			r.tasks[name] = &Task{
+		if _, exists := r.tasks[identity]; !exists {
+			r.tasks[identity] = &Task{
 				ID:       r.nextID,
 				Runnable: runnable,
 				reporter: r.reporter,
 			}
 			r.nextID++
 		}
-		out = append(out, r.tasks[name])
+		out = append(out, r.tasks[identity])
 	}
 	return out
 }
 
 // All is a registry of all tasks
 var All = Registry{
-	tasks: map[string]*Task{},
+	tasks: map[interface{}]*Task{},
 }
 
 // SetReporter sets the reporter

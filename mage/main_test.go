@@ -83,7 +83,7 @@ func TestTransitiveDepCache(t *testing.T) {
 		t.Fatalf("got code %v, err: %s", code, stderr)
 	}
 	expected := "woof\n"
-	if actual := stdout.String(); actual != expected {
+	if actual := stdout.String(); !strings.Contains(actual, expected) {
 		t.Fatalf("expected %q but got %q", expected, actual)
 	}
 	// ok, so baseline, the generated and cached binary should do "woof"
@@ -104,7 +104,7 @@ func TestTransitiveDepCache(t *testing.T) {
 		t.Fatalf("got code %v, err: %s", code, stderr)
 	}
 	expected = "meow\n"
-	if actual := stdout.String(); actual != expected {
+	if actual := stdout.String(); !strings.Contains(actual, expected) {
 		t.Fatalf("expected %q but got %q", expected, actual)
 	}
 }
@@ -134,7 +134,7 @@ func TestTransitiveHashFast(t *testing.T) {
 		t.Fatalf("got code %v, err: %s", code, stderr)
 	}
 	expected := "woof\n"
-	if actual := stdout.String(); actual != expected {
+	if actual := stdout.String(); !strings.Contains(actual, expected) {
 		t.Fatalf("expected %q but got %q", expected, actual)
 	}
 
@@ -159,7 +159,7 @@ func TestTransitiveHashFast(t *testing.T) {
 	// we should still get woof, even though the dependency was changed to
 	// return "meow", because we're only hashing the top level magefiles, not
 	// dependencies.
-	if actual := stdout.String(); actual != expected {
+	if actual := stdout.String(); !strings.Contains(actual, expected) {
 		t.Fatalf("expected %q but got %q", expected, actual)
 	}
 }
@@ -321,7 +321,7 @@ func TestGoRun(t *testing.T) {
 	}
 	actual := string(b)
 	expected := "stuff\n"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
 }
@@ -342,7 +342,7 @@ func TestVerbose(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := ""
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
 	stderr.Reset()
@@ -354,8 +354,8 @@ func TestVerbose(t *testing.T) {
 	}
 
 	actual = stderr.String()
-	expected = "Running dependency: TestVerbose\nhi!\n"
-	if actual != expected {
+	expected = "hi!\n"
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
 }
@@ -494,7 +494,7 @@ func TestTargetError(t *testing.T) {
 		t.Fatalf("expected 1, but got %v", code)
 	}
 	actual := stdout.String()
-	expected := regexp.QuoteMeta(" E #0000 ReturnsNonNilError | FAILURE | bang!\n")
+	expected := regexp.QuoteMeta(" E | bang!\n#0000 FAILED")
 	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
@@ -516,7 +516,7 @@ func TestStdinCopy(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := "hi!"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
 }
@@ -534,7 +534,7 @@ func TestTargetPanics(t *testing.T) {
 		t.Fatalf("expected 1, but got %v", code)
 	}
 	actual := stdout.String()
-	expected := regexp.QuoteMeta("E #0000 Panics | FAILURE | boom!\n")
+	expected := regexp.QuoteMeta("E | boom!\n#0000 FAILED Panics")
 	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
@@ -553,7 +553,7 @@ func TestPanicsErr(t *testing.T) {
 		t.Fatalf("expected 1, but got %v", code)
 	}
 	actual := stdout.String()
-	expected := regexp.QuoteMeta("E #0000 PanicsErr | FAILURE | kaboom!\n")
+	expected := regexp.QuoteMeta("E | kaboom!\n#0000 FAILED PanicsErr")
 	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Fatalf("expected %q, but got %q", expected, actual)
 	}
@@ -677,13 +677,13 @@ func TestMultipleTargets(t *testing.T) {
 		t.Errorf("expected 0, but got %v", code)
 	}
 	actual := stderr.String()
-	expected := "Running dependency: TestVerbose\nhi!\nRunning dependency: ReturnsNilError\n"
+	expected := "hi!\n"
 	if actual != expected {
 		t.Errorf("expected %q, but got %q", expected, actual)
 	}
 	actual = stdout.String()
 	expected = "stuff\n"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Errorf("expected %q, but got %q", expected, actual)
 	}
 }
@@ -702,12 +702,12 @@ func TestFirstTargetFails(t *testing.T) {
 		t.Errorf("expected 1, but got %v", code)
 	}
 	actual := stderr.String()
-	expected := "Running dependency: ReturnsNonNilError\n"
+	expected := ""
 	if actual != expected {
 		t.Errorf("expected %q, but got %q", expected, actual)
 	}
 	actual = stdout.String()
-	expected = regexp.QuoteMeta("E #0000 ReturnsNonNilError | FAILURE | bang!\n")
+	expected = regexp.QuoteMeta("E | bang!\n#0000 FAILED ReturnsNonNilError")
 	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Errorf("expected %q, but got %q", expected, actual)
 	}
@@ -781,7 +781,7 @@ func TestSetDir(t *testing.T) {
 		t.Errorf("expected code 0, but got %d. Stdout:\n%s\nStderr:\n%s", code, stdout, stderr)
 	}
 	expected := "setdir.go\n"
-	if out := stdout.String(); out != expected {
+	if out := stdout.String(); !strings.Contains(out, expected) {
 		t.Fatalf("expected list of files to be %q, but was %q", expected, out)
 	}
 }
@@ -802,7 +802,7 @@ func TestTimeout(t *testing.T) {
 		t.Fatalf("expected 1, but got %v, stderr: %q, stdout: %q", code, stderr, stdout)
 	}
 	actual := stdout.String()
-	expected := regexp.QuoteMeta("E #0000 Timeout | FAILURE | context deadline exceeded\n")
+	expected := regexp.QuoteMeta("E | context deadline exceeded\n")
 
 	if matched, _ := regexp.MatchString(expected, actual); !matched {
 		t.Fatalf("expected %q, but got %q", expected, actual)
@@ -1202,7 +1202,7 @@ func TestNamespaceDep(t *testing.T) {
 		t.Fatalf("expected 0, but got %v, stderr:\n%s", code, stderr)
 	}
 	expected := "hi!\n"
-	if stdout.String() != expected {
+	if !strings.Contains(stdout.String(), expected) {
 		t.Fatalf("expected %q, but got %q", expected, stdout.String())
 	}
 }
@@ -1213,14 +1213,14 @@ func TestNamespace(t *testing.T) {
 		Dir:    "./testdata/namespaces",
 		Stderr: ioutil.Discard,
 		Stdout: stdout,
-		Args:   []string{"ns:error"},
+		Args:   []string{"ns:bareCtx"},
 	}
 	code := Invoke(inv)
 	if code != 0 {
 		t.Fatalf("expected 0, but got %v", code)
 	}
 	expected := "hi!\n"
-	if stdout.String() != expected {
+	if !strings.Contains(stdout.String(), expected) {
 		t.Fatalf("expected %q, but got %q", expected, stdout.String())
 	}
 }
@@ -1237,7 +1237,7 @@ func TestNamespaceDefault(t *testing.T) {
 		t.Fatalf("expected 0, but got %v", code)
 	}
 	expected := "hi!\n"
-	if stdout.String() != expected {
+	if !strings.Contains(stdout.String(), expected) {
 		t.Fatalf("expected %q, but got %q", expected, stdout.String())
 	}
 }
@@ -1245,15 +1245,21 @@ func TestNamespaceDefault(t *testing.T) {
 func TestCustomDependency(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	inv := Invocation{
-		Dir: "./testdata/custom_dep",
-		//		Stderr: ioutil.Discard,
+		Dir:    "./testdata/custom_dep",
 		Stdout: stdout,
+		Stderr: os.Stderr,
 	}
 	code := Invoke(inv)
 	if code != 0 {
 		t.Fatalf("expected 0, but got %v", code)
 	}
-	stdoutLines := strings.Split(stdout.String(), "\n")
+	stdoutLines := []string{}
+	for _, line := range strings.Split(stdout.String(), "\n") {
+		if strings.Contains(line, "DEPS") || strings.Contains(line, "SUCCEEDED") || strings.Contains(line, "STARTED") {
+			continue
+		}
+		stdoutLines = append(stdoutLines, line)
+	}
 	sort.Strings(stdoutLines)
 	expected := "123456"
 	if strings.Join(stdoutLines, "") != expected {
@@ -1261,7 +1267,7 @@ func TestCustomDependency(t *testing.T) {
 	}
 }
 
-var wrongDepRx = regexp.MustCompile("Invalid type for dependent function.*@ main.FooBar .*magefile.go")
+var wrongDepRx = regexp.MustCompile("Invalid type for a task function.*@ main.FooBar .*magefile.go")
 
 func TestWrongDependency(t *testing.T) {
 	stdout := &bytes.Buffer{}

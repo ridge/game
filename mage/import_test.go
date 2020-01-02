@@ -2,6 +2,7 @@ package mage
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -54,7 +55,7 @@ func TestMageImportsRoot(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := "root\n"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected: %q got: %q", expected, actual)
 	}
 }
@@ -75,7 +76,7 @@ func TestMageImportsNamedNS(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := "deploy2\n"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected: %q got: %q", expected, actual)
 	}
 }
@@ -96,7 +97,7 @@ func TestMageImportsNamedRoot(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := "buildsubdir2\n"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected: %q got: %q", expected, actual)
 	}
 	if stderr := stderr.String(); stderr != "" {
@@ -120,7 +121,7 @@ func TestMageImportsRootImportNS(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := "deploy\n"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected: %q got: %q", expected, actual)
 	}
 }
@@ -141,7 +142,7 @@ func TestMageImportsRootImport(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := "buildsubdir\n"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected: %q got: %q", expected, actual)
 	}
 }
@@ -162,7 +163,7 @@ func TestMageImportsOneLine(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := "build\n"
-	if actual != expected {
+	if !strings.Contains(actual, expected) {
 		t.Fatalf("expected: %q got: %q", expected, actual)
 	}
 }

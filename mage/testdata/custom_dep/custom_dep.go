@@ -3,27 +3,22 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/magefile/mage/mg"
+	"github.com/magefile/mage/task"
 )
 
 type ParameterizedDep struct {
 	i int
 }
 
-func (pd ParameterizedDep) Identify() string {
-	return fmt.Sprintf("main.ParameterizedDep(%d)", pd.i)
-}
-
-func (pd ParameterizedDep) Run(ctx context.Context) error {
+func (pd ParameterizedDep) Run(ctx task.Context) {
 	fmt.Printf("%d\n", pd.i)
-	return nil
 }
 
-func Main() {
-	mg.Deps(
+func Main(ctx task.Context) {
+	mg.CtxDeps(ctx,
 		ParameterizedDep{1},
 		ParameterizedDep{2},
 		ParameterizedDep{3},
@@ -36,7 +31,7 @@ func Main() {
 		ParameterizedDep{6},
 		ParameterizedDep{2},
 	)
-	mg.SerialDeps(
+	mg.SerialCtxDeps(ctx,
 		ParameterizedDep{1},
 		ParameterizedDep{2},
 		ParameterizedDep{5},
