@@ -21,7 +21,7 @@ type Context struct {
 // dependencies using Dep. Each dependency is run in their own goroutine. Each
 // function is given the subtask context.
 func (ctx Context) Dep(fns ...interface{}) {
-	RunSubtasks(ctx, All.Register(fns))
+	runSubtasks(ctx, All.Register(fns))
 }
 
 // Stdout returns a stdout writer associated with the current task

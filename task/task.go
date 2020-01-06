@@ -174,10 +174,10 @@ func (st SubtasksFailure) Error() string {
 		strings.Join(ids, ", "))
 }
 
-// RunSubtasks runs given tasks as subtasks of the task in the context in
+// runSubtasks runs given tasks as subtasks of the task in the context in
 // parallel. All tasks are allowed to finish even if some of them error out, and
 // errors from all subtasks are collected.
-func RunSubtasks(ctx Context, subtasks []*Task) {
+func runSubtasks(ctx Context, subtasks []*Task) {
 	tc := taskCtx(ctx)
 	tc.closeSpan(nil)
 
