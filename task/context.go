@@ -26,6 +26,10 @@ func (ctx Context) Dep(fns ...interface{}) {
 // one after another, not simultaneously.
 //
 // Same as for Dep, if one of subtasks fails, the rest will be run anyway.
+//
+// This function is useful in a very limited number of cases, mostly when there
+// is a number of checks that have to be performed in order and all erorrs need
+// to be conveyed back to user.
 func (ctx Context) SeqDep(fns ...interface{}) {
 	runSubtasksSequential(ctx, All.Register(fns))
 }
