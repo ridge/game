@@ -10,11 +10,9 @@ type Context struct {
 	context.Context
 }
 
-// Dep runs the given tasks as subtasks of the curent task.
-// Dependencies must only be of type:
-//     func()
-//     func(task.Context)
-// or a similar method on a mg.Namespace type.
+// Dep runs the given tasks as subtasks of the curent task. Dependencies must
+// only be of type func(task.Context) or the method of the same signature on a
+// mg.Namespace type.
 //
 // The task calling Dep is guaranteed that all dependent tasks will be run
 // exactly once when Dep returns. Dependent functions may in turn run their own
@@ -22,6 +20,14 @@ type Context struct {
 // function is given the subtask context.
 func (ctx Context) Dep(fns ...interface{}) {
 	runSubtasks(ctx, All.Register(fns))
+}
+
+// SeqDep is similar to Dep, with the only difference that subtasks will be run
+// one after another, not simultaneously.
+//
+// Same as for Dep, if one of subtasks fails, the rest will be run anyway.
+func (ctx Context) SeqDep(fns ...interface{}) {
+	runSubtasksSequential(ctx, All.Register(fns))
 }
 
 // Stdout returns a stdout writer associated with the current task

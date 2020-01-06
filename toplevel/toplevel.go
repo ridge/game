@@ -24,12 +24,16 @@ func (consoleReporter) Started(t *task.Task) {
 	fmt.Printf("%s STARTED %s\n", t.StringID(), t.Name())
 }
 
-func (consoleReporter) Dependencies(dependent *task.Task, dependees []*task.Task) {
+func (consoleReporter) Dependencies(dependent *task.Task, dependees []*task.Task, sequential bool) {
 	s := []string{}
 	for _, d := range dependees {
 		s = append(s, d.String())
 	}
-	fmt.Printf("%s DEPS %s -> %s\n", dependent.StringID(), dependent.Name(), strings.Join(s, ", "))
+	op := "DEPS"
+	if sequential {
+		op = "SEQDEPS"
+	}
+	fmt.Printf("%s %s %s -> %s\n", dependent.StringID(), op, dependent.Name(), strings.Join(s, ", "))
 }
 
 func (cr consoleReporter) Finished(t *task.Task) {

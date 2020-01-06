@@ -174,6 +174,14 @@ func (st SubtasksFailure) Error() string {
 		strings.Join(ids, ", "))
 }
 
+func reportFailures(tc *taskContext, failures []*Task) {
+	sort.Slice(failures, func(i, j int) bool {
+		return failures[i].ID < failures[j].ID
+	})
+	tc.task.Error = SubtasksFailure(failures)
+	panic(tc.task.Error)
+}
+
 // runSubtasks runs given tasks as subtasks of the task in the context in
 // parallel. All tasks are allowed to finish even if some of them error out, and
 // errors from all subtasks are collected.
@@ -183,7 +191,7 @@ func runSubtasks(ctx Context, subtasks []*Task) {
 
 	finishedCh := make(chan *Task, len(subtasks))
 
-	tc.task.reporter.Dependencies(tc.task, subtasks)
+	tc.task.reporter.Dependencies(tc.task, subtasks, false)
 
 	for _, subtask := range subtasks {
 		go func(subtask *Task) {
@@ -204,10 +212,28 @@ func runSubtasks(ctx Context, subtasks []*Task) {
 	tc.closeSpan(subtasks)
 
 	if len(f) > 0 {
-		sort.Slice(f, func(i, j int) bool {
-			return f[i].ID < f[j].ID
-		})
-		tc.task.Error = SubtasksFailure(f)
-		panic(tc.task.Error)
+		reportFailures(tc, f)
+	}
+}
+
+func runSubtasksSequential(ctx Context, subtasks []*Task) {
+	tc := taskCtx(ctx)
+	tc.closeSpan(nil)
+
+	tc.task.reporter.Dependencies(tc.task, subtasks, true)
+
+	var f []*Task
+
+	for _, subtask := range subtasks {
+		subtask.Run(ctx)
+		if subtask.Error != nil {
+			f = append(f, subtask)
+		}
+	}
+
+	tc.closeSpan(subtasks)
+
+	if len(f) > 0 {
+		reportFailures(tc, f)
 	}
 }

@@ -19,7 +19,7 @@ const (
 type Reporter interface {
 	Started(t *Task)
 	Finished(t *Task)
-	Dependencies(dependent *Task, dependees []*Task)
+	Dependencies(dependent *Task, dependees []*Task, sequential bool)
 	OutputLine(t *Task, time time.Time, stream Stream, line string)
 }
 
