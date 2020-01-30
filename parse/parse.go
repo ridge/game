@@ -154,7 +154,7 @@ func Package(path string, files []string) (*PkgInfo, *ast.Package, *doc.Package,
 	}
 	p := doc.New(pkg, "./", 0)
 	pi := &PkgInfo{
-		Description: toOneLine(p.Doc),
+		Description: p.Doc,
 	}
 
 	pi.Funcs = append(pi.Funcs, getNamespacedFuncs(p)...)
