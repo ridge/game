@@ -73,6 +73,15 @@ func (r *Registry) Register(fns []interface{}) []*Task {
 	return out
 }
 
+// Tasks returns tasks
+func (r *Registry) Tasks() []*Task {
+	ts := []*Task{}
+	for _, task := range r.tasks {
+		ts = append(ts, task)
+	}
+	return ts
+}
+
 // All is a registry of all tasks
 var All = Registry{
 	tasks: map[interface{}]*Task{},

@@ -112,6 +112,7 @@ type Invocation struct {
 	GoCmd      string        // the go binary command to run
 	CacheDir   string        // the directory where we should store compiled binaries
 	HashFast   bool          // don't rely on GOCACHE, just hash the magefiles
+	Trace      string        // tells mage to trace tasks write results to file
 }
 
 // ParseAndRun parses the command line, and then compiles and runs the mage
@@ -180,6 +181,7 @@ func Parse(stderr, stdout io.Writer, args []string) (inv Invocation, cmd Command
 	fs.StringVar(&inv.GoCmd, "gocmd", mg.GoCmd(), "use the given go binary to compile the output")
 	fs.StringVar(&inv.GOOS, "goos", "", "set GOOS for binary produced with -compile")
 	fs.StringVar(&inv.GOARCH, "goarch", "", "set GOARCH for binary produced with -compile")
+	fs.StringVar(&inv.Trace, "trace", "", "trace task execution and save it to the given file in Chrome trace_event format")
 
 	// commands below
 
@@ -727,6 +729,9 @@ func RunCompiled(inv Invocation, exePath string, errlog *log.Logger) int {
 	}
 	if inv.Timeout > 0 {
 		c.Env = append(c.Env, fmt.Sprintf("MAGEFILE_TIMEOUT=%s", inv.Timeout.String()))
+	}
+	if inv.Trace != "" {
+		c.Env = append(c.Env, "MAGEFILE_TRACE="+inv.Trace)
 	}
 	debug.Print("running magefile with mage vars:\n", strings.Join(filter(c.Env, "MAGEFILE"), "\n"))
 	err := c.Run()

@@ -2,6 +2,7 @@ package toplevel
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -162,12 +163,131 @@ func printFailure(t *task.Task, indent int) {
 	printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
 }
 
+type eventType string
+
+const (
+	eventMeta      eventType = "M"
+	eventInstant   eventType = "I"
+	eventStartStop eventType = "X"
+)
+
+type eventScope string
+
+const (
+	scopeGlobal eventScope = "g"
+)
+
+type eventColor string
+
+const (
+	eventColorThreadStateRunning = "thread_state_running"
+)
+
+//
+// See
+// https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU
+// for the format and allowed combinations of keys/values
+//
+type event struct {
+	Name      string            `json:"name"`
+	Category  string            `json:"cat,omitempty"`
+	Type      eventType         `json:"ph"`
+	ProcessID int               `json:"pid"`
+	ThreadID  int               `json:"tid"`
+	Args      map[string]string `json:"args,omitempty"`
+	Timestamp int64             `json:"ts,omitempty"`
+	Scope     eventScope        `json:"s,omitempty"`
+	Duration  int64             `json:"dur,omitempty"`
+	ColorName eventColor        `json:"cname,omitempty"`
+}
+
+func unixMicro(t time.Time) int64 {
+	return t.UnixNano() / 1000
+}
+
+func collectEvents() []event {
+	events := []event{}
+	for _, task := range task.All.Tasks() {
+		events = append(events, event{
+			Name:     "thread_name",
+			Type:     eventMeta,
+			ThreadID: task.ID,
+			Args: map[string]string{
+				"name": task.String(),
+			},
+		}, event{
+			Name:      "start " + task.String(),
+			Type:      eventInstant,
+			Scope:     scopeGlobal,
+			ThreadID:  task.ID,
+			Timestamp: unixMicro(task.Start()),
+		}, event{
+			Name:      "end " + task.String(),
+			Type:      eventInstant,
+			Scope:     scopeGlobal,
+			ThreadID:  task.ID,
+			Timestamp: unixMicro(task.End()),
+		})
+		for _, span := range task.Spans {
+			if len(span.Subtasks) != 0 {
+				continue
+			}
+			events = append(events, event{
+				Name:      "compute",
+				Category:  "compute",
+				Type:      eventStartStop,
+				Timestamp: unixMicro(span.Start),
+				ThreadID:  task.ID,
+				Duration:  span.End.Sub(span.Start).Microseconds(),
+				ColorName: eventColorThreadStateRunning,
+			})
+		}
+	}
+	return events
+}
+
+func run(ctx context.Context, tasks []*task.Task, tracingFile string) (exitCode int) {
+	if tracingFile != "" {
+		defer func() {
+			data, err := json.Marshal(collectEvents())
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unexpected failure to encode JSON for tracing: %v\n", err)
+				exitCode = 1
+				return
+			}
+			if err := ioutil.WriteFile(tracingFile, data, 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to save tracing file: %v\n", err)
+				exitCode = 1
+				return
+			}
+		}()
+	}
+
+	defer func() {
+		if v := recover(); v != nil {
+			fmt.Printf("Unexpected error: %v\n", v)
+			debug.PrintStack()
+			exitCode = 1
+		}
+	}()
+
+	for _, t := range tasks {
+		t.Run(task.Context{ctx})
+		if t.Error != nil {
+			printFailure(t, 0)
+			return 1
+		}
+	}
+	return 0
+}
+
 // Main is the main function for generated Mage binary
 func Main(binaryName string, targets []Target, defaultTarget string, desc string, module string) {
 	verbose := false
 	list := false // print out a list of targets
 	help := false // request target help
 	var timeout time.Duration
+	tracing := ""
 
 	fs := flag.FlagSet{}
 	fs.SetOutput(os.Stdout)
@@ -177,6 +297,7 @@ func Main(binaryName string, targets []Target, defaultTarget string, desc string
 	fs.BoolVar(&list, "l", parseBool("MAGEFILE_LIST"), "list targets for this binary")
 	fs.BoolVar(&help, "h", parseBool("MAGEFILE_HELP"), "print out help for a specific target")
 	fs.DurationVar(&timeout, "t", parseDuration("MAGEFILE_TIMEOUT"), "timeout in duration parsable format (e.g. 5m30s)")
+	fs.StringVar(&tracing, "trace", os.Getenv("MAGEFILE_TRACE"), "trace task execution and save to the given file in Chrome trace_event format")
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stdout, `
 %s [options] [target]
@@ -265,19 +386,5 @@ Options:
 
 	tasks := task.All.Register(targetFns)
 
-	defer func() {
-		if v := recover(); v != nil {
-			fmt.Printf("Unexpected error: %v\n", v)
-			debug.PrintStack()
-			os.Exit(1)
-		}
-	}()
-
-	for _, t := range tasks {
-		t.Run(task.Context{ctx})
-		if t.Error != nil {
-			printFailure(t, 0)
-			os.Exit(1)
-		}
-	}
+	os.Exit(run(ctx, tasks, tracing))
 }
