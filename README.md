@@ -1,3 +1,6 @@
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/ridge/game/)
+[![Build Status](https://travis-ci.com/ridge/game.svg?branch=master)](https://travis-ci.com/ridge/game/)
+
 # Game
 
 Game is a Make-like build tool using Go.
