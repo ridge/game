@@ -17,6 +17,8 @@ jobs:
     os: osx
     osx_image: xcode11.2
     language: go
+    go: 1.13.x
   - name: Windows
     os: windows
     language: go
+    go: 1.13.x
