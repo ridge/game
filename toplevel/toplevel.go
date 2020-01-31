@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -282,7 +283,7 @@ func run(ctx context.Context, tasks []*task.Task, tracingFile string) (exitCode 
 }
 
 // Main is the main function for generated Mage binary
-func Main(binaryName string, targets []Target, defaultTarget string, desc string, module string) {
+func Main(binaryName string, targets []Target, varTargets []Target, defaultTarget string, desc string, module string) {
 	verbose := false
 	list := false // print out a list of targets
 	help := false // request target help
@@ -329,6 +330,15 @@ Options:
 		log.SetOutput(ioutil.Discard)
 	}
 	logger := log.New(os.Stderr, "", 0)
+
+	for _, varTarget := range varTargets {
+		if _, ok := varTarget.Fn.(task.Runnable); ok {
+			targets = append(targets, varTarget)
+		}
+	}
+	sort.Slice(targets, func(i, j int) bool {
+		return targets[i].Name < targets[j].Name
+	})
 
 	if list {
 		listTargets(targets, defaultTarget, desc)

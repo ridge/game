@@ -25,6 +25,36 @@ func EnableDebug() {
 	debug.SetOutput(os.Stderr)
 }
 
+// Var contains information about a variable
+type Var struct {
+	Comment  string
+	Synopsis string
+
+	name       string
+	pkg        string
+	pkgAlias   string
+	importPath string
+}
+
+// TargetName returns the name of the target as it should appear when used from
+// the mage CLI.
+func (v Var) TargetName() string {
+	name := v.name
+	if v.pkgAlias != "" {
+		name = v.pkgAlias + ":" + name
+	}
+	return name
+}
+
+// VarName returns the var name in Go syntax
+func (v Var) VarName() string {
+	name := v.name
+	if v.pkg != "" {
+		name = v.pkg + "." + name
+	}
+	return name
+}
+
 // PrimaryPkgInfo contains information about a primary build package
 type PrimaryPkgInfo struct {
 	*PkgInfo
@@ -37,6 +67,7 @@ type PrimaryPkgInfo struct {
 type PkgInfo struct {
 	Description string
 	Funcs       []*Function
+	Vars        []*Var
 }
 
 // Function represented a job function from a mage file
@@ -98,7 +129,7 @@ func PrimaryPackage(gocmd, path string, files []string) (*PrimaryPkgInfo, error)
 		return nil, err
 	}
 
-	imports, err := getImports(gocmd, info.Funcs, astPkg)
+	imports, err := getImports(gocmd, info.Funcs, info.Vars, astPkg)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +190,9 @@ func Package(path string, files []string) (*PkgInfo, *ast.Package, *doc.Package,
 
 	pi.Funcs = append(pi.Funcs, getNamespacedFuncs(p)...)
 	pi.Funcs = append(pi.Funcs, getFuncs(p)...)
+	pi.Vars = getVars(p)
 
-	if hasDupes, names := checkDupeTargets(pi.Funcs); hasDupes {
+	if hasDupes, names := checkDupeTargets(pi.Funcs, pi.Vars); hasDupes {
 		msg := "Build targets must be case insensitive, thus the following targets conflict:\n"
 		for _, v := range names {
 			if len(v) > 1 {
@@ -206,6 +238,11 @@ func getImport(gocmd, importpath, alias string) (*Import, error) {
 		info.Funcs[i].pkgAlias = alias
 		info.Funcs[i].importPath = importpath
 	}
+	for i := range info.Vars {
+		debug.Printf("setting alias %q and package %q on var %v", alias, name, info.Vars[i].name)
+		info.Vars[i].pkgAlias = alias
+		info.Vars[i].importPath = importpath
+	}
 	return &Import{Name: name, Path: importpath, Info: *info}, nil
 }
 
@@ -214,6 +251,24 @@ type Import struct {
 	UniqueName string // a name unique across all imports
 	Path       string
 	Info       PkgInfo
+}
+
+func getVars(docPkg *doc.Package) []*Var {
+	output := []*Var{}
+	for _, v := range docPkg.Vars {
+		for _, name := range v.Names {
+			if !ast.IsExported(name) {
+				debug.Printf("skipping non-exported var %s", name)
+				continue
+			}
+			output = append(output, &Var{
+				name:     name,
+				Comment:  toOneLine(v.Doc),
+				Synopsis: sanitizeSynopsis(v.Doc, name),
+			})
+		}
+	}
+	return output
 }
 
 func getFuncs(docPkg *doc.Package) []*Function {
@@ -234,7 +289,7 @@ func getFuncs(docPkg *doc.Package) []*Function {
 			output = append(output, &Function{
 				name:      f.Name,
 				Comment:   toOneLine(f.Doc),
-				Synopsis:  sanitizeSynopsis(f),
+				Synopsis:  sanitizeSynopsis(f.Doc, f.Name),
 				isError:   typ == errorType || typ == contextErrorType,
 				isContext: typ == contextVoidType || typ == contextErrorType,
 			})
@@ -265,7 +320,7 @@ func getNamespacedFuncs(docPkg *doc.Package) []*Function {
 				name:      f.Name,
 				receiver:  t.Name,
 				Comment:   toOneLine(f.Doc),
-				Synopsis:  sanitizeSynopsis(f),
+				Synopsis:  sanitizeSynopsis(f.Doc, f.Name),
 				isError:   typ == errorType || typ == contextErrorType,
 				isContext: typ == contextVoidType || typ == contextErrorType,
 			})
@@ -274,7 +329,7 @@ func getNamespacedFuncs(docPkg *doc.Package) []*Function {
 	return output
 }
 
-func getImports(gocmd string, funcs []*Function, astPkg *ast.Package) ([]*Import, error) {
+func getImports(gocmd string, funcs []*Function, vars []*Var, astPkg *ast.Package) ([]*Import, error) {
 	importNames := map[string]string{}
 	rootImports := []string{}
 	for _, f := range astPkg.Files {
@@ -334,6 +389,9 @@ func getImports(gocmd string, funcs []*Function, astPkg *ast.Package) ([]*Import
 		imp.UniqueName = unique
 		for _, f := range imp.Info.Funcs {
 			f.pkg = unique
+		}
+		for _, v := range imp.Info.Vars {
+			v.pkg = unique
 		}
 	}
 	return imports, nil
@@ -418,7 +476,7 @@ func fieldNames(flist *ast.FieldList) string {
 }
 
 // checkDupeTargets checks a package for duplicate target names.
-func checkDupeTargets(funcs []*Function) (hasDupes bool, names map[string][]string) {
+func checkDupeTargets(funcs []*Function, vars []*Var) (hasDupes bool, names map[string][]string) {
 	names = map[string][]string{}
 	lowers := map[string]bool{}
 	for _, f := range funcs {
@@ -432,12 +490,20 @@ func checkDupeTargets(funcs []*Function) (hasDupes bool, names map[string][]stri
 		lowers[low] = true
 		names[low] = append(names[low], f.name)
 	}
+	for _, v := range vars {
+		low := strings.ToLower(v.name)
+		if lowers[low] {
+			hasDupes = true
+		}
+		lowers[low] = true
+		names[low] = append(names[low], v.name)
+	}
 	return hasDupes, names
 }
 
 // sanitizeSynopsis sanitizes function Doc to create a summary.
-func sanitizeSynopsis(f *doc.Func) string {
-	synopsis := doc.Synopsis(f.Doc)
+func sanitizeSynopsis(docstring, name string) string {
+	synopsis := doc.Synopsis(docstring)
 
 	// If the synopsis begins with the function name, remove it. This is done to
 	// not repeat the text.
@@ -445,7 +511,7 @@ func sanitizeSynopsis(f *doc.Func) string {
 	// clean	Clean removes the temporarily generated files
 	// To:
 	// clean 	removes the temporarily generated files
-	if syns := strings.Split(synopsis, " "); strings.EqualFold(f.Name, syns[0]) {
+	if syns := strings.Split(synopsis, " "); strings.EqualFold(name, syns[0]) {
 		return strings.Join(syns[1:], " ")
 	}
 

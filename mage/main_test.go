@@ -404,7 +404,9 @@ func TestList(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := `
-This is a comment on the package which should get turned into output with the list of targets.
+This is a comment on the package which should get turned into output with the
+list of targets.
+
 
 Targets:
   somePig*       This is the synopsis for SomePig.
@@ -465,7 +467,9 @@ func TestIgnoreDefault(t *testing.T) {
 	}
 	actual := stdout.String()
 	expected := `
-This is a comment on the package which should get turned into output with the list of targets.
+This is a comment on the package which should get turned into output with the
+list of targets.
+
 
 Targets:
   somePig*       This is the synopsis for SomePig.
@@ -742,9 +746,6 @@ func TestParse(t *testing.T) {
 	inv, cmd, err := Parse(ioutil.Discard, buf, []string{"-v", "-debug", "-gocmd=foo", "-d", "dir", "build", "deploy"})
 	if err != nil {
 		t.Fatal("unexpected error", err)
-	}
-	if cmd == Init {
-		t.Error("init should be false but was true")
 	}
 	if cmd == Version {
 		t.Error("showVersion should be false but was true")
@@ -1264,6 +1265,25 @@ func TestCustomDependency(t *testing.T) {
 	expected := "123456"
 	if strings.Join(stdoutLines, "") != expected {
 		t.Fatalf("expected %q, but got %q", expected, stdoutLines)
+	}
+}
+
+func TestVarDep(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	inv := Invocation{
+		Dir:    "./testdata/vartasks",
+		Stdout: stdout,
+		Stderr: os.Stderr,
+	}
+	code := Invoke(inv)
+	if code != 0 {
+		t.Fatalf("expected 0, but got %v", code)
+	}
+	expected := `Targets:
+  dep    var dep
+`
+	if expected != stdout.String() {
+		t.Fatalf("expected %q, but got %q", expected, stdout.String())
 	}
 }
 

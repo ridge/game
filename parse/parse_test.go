@@ -77,4 +77,31 @@ func TestParse(t *testing.T) {
 			t.Fatalf("expected:\n%#v\n\nto be in:\n%#v", fn, info.Funcs)
 		}
 	}
+
+	expectedVars := []Var{
+		{
+			name: "VarWrongType",
+		},
+		{
+			name: "VarNoInterface",
+		},
+		{
+			name: "VarTarget",
+		},
+	}
+
+	for _, vr := range expectedVars {
+		found := false
+		for _, varFn := range info.Vars {
+			if reflect.DeepEqual(vr, *varFn) {
+				found = true
+				break
+			} else {
+				t.Logf("%#v", varFn)
+			}
+		}
+		if !found {
+			t.Fatalf("expected:\n%v\n\nto be in:\n%#v", vr, info.Vars)
+		}
+	}
 }

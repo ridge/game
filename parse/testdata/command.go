@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/magefile/mage/mg"
+	"github.com/magefile/mage/task"
 )
 
 // This should work as a default - even if it's in a different file
@@ -31,3 +32,17 @@ func TakesContextReturnsVoid(ctx context.Context) {
 func TakesContextReturnsError(ctx context.Context) error {
 	return nil
 }
+
+type Ru struct {
+}
+
+func (Ru) Run(ctx task.Context) {
+}
+
+var varUnexported = Ru{}
+
+var VarWrongType = 42
+
+var VarNoInterface = struct{}{}
+
+var VarTarget = Ru{}

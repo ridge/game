@@ -57,7 +57,6 @@ var mainfileTemplate = template.Must(template.New("").Funcs(map[string]interface
 		return strings.Join(parts, ":")
 	},
 }).Parse(mageMainfileTplString))
-var initOutput = template.Must(template.New("").Parse(mageTpl))
 
 const mainfile = "mage_output_file.go"
 const initFile = "magefile.go"
@@ -80,7 +79,6 @@ type Command int
 const (
 	None          Command = iota
 	Version               // report the current version of mage
-	Init                  // create a starting template for mage
 	Clean                 // clean out old compiled mage binaries from the cache
 	CompileStatic         // compile a static binary of the current directory
 )
@@ -139,13 +137,6 @@ func ParseAndRun(stdout, stderr io.Writer, stdin io.Reader, args []string) int {
 		out.Println("Commit:", commitHash)
 		out.Println("built with:", runtime.Version())
 		return 0
-	case Init:
-		if err := generateInit(inv.Dir); err != nil {
-			errlog.Println("Error:", err)
-			return 1
-		}
-		out.Println(initFile, "created")
-		return 0
 	case Clean:
 		if err := removeContents(inv.CacheDir); err != nil {
 			out.Println("Error:", err)
@@ -188,8 +179,6 @@ func Parse(stderr, stdout io.Writer, args []string) (inv Invocation, cmd Command
 	fs.BoolVar(&inv.List, "l", false, "list mage targets in this directory")
 	var showVersion bool
 	fs.BoolVar(&showVersion, "version", false, "show version info for the mage binary")
-	var mageInit bool
-	fs.BoolVar(&mageInit, "init", false, "create a starting template if no mage files exist")
 	var clean bool
 	fs.BoolVar(&clean, "clean", false, "clean out old generated binaries from CACHE_DIR")
 	var compileOutPath string
@@ -239,9 +228,6 @@ Options:
 
 	numCommands := 0
 	switch {
-	case mageInit:
-		numCommands++
-		cmd = Init
 	case compileOutPath != "":
 		numCommands++
 		cmd = CompileStatic
@@ -417,6 +403,7 @@ type mainfileTemplateData struct {
 	Funcs       []*parse.Function
 	DefaultFunc parse.Function
 	Imports     []*parse.Import
+	Vars        []*parse.Var
 	BinaryName  string
 	Module      string
 }
@@ -597,6 +584,7 @@ func GenerateMainfile(binaryName, path string, info *parse.PrimaryPkgInfo, modul
 		Description: info.Description,
 		Funcs:       info.Funcs,
 		Imports:     info.Imports,
+		Vars:        info.Vars,
 		BinaryName:  binaryName,
 		Module:      module,
 	}
@@ -662,21 +650,6 @@ func hashFile(fn string) (string, error) {
 		return "", fmt.Errorf("can't write data to hash: %v", err)
 	}
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
-}
-
-func generateInit(dir string) error {
-	debug.Println("generating default magefile in", dir)
-	f, err := os.Create(filepath.Join(dir, initFile))
-	if err != nil {
-		return fmt.Errorf("could not create mage template: %v", err)
-	}
-	defer f.Close()
-
-	if err := initOutput.Execute(f, nil); err != nil {
-		return fmt.Errorf("can't execute magefile template: %v", err)
-	}
-
-	return nil
 }
 
 func cmdRan(err error) bool {

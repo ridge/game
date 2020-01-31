@@ -8,7 +8,6 @@ var mageMainfileTplString = `// +build ignore
 package main
 
 import (
-	"sort"
 	{{range .Imports}}{{.UniqueName}} "{{.Path}}"
 	{{end}}
 
@@ -32,11 +31,25 @@ func main() {
 {{- end}}
 {{- end}}
 	}
-	sort.Slice(tlt, func(i, j int) bool {
-		return tlt[i].Name<tlt[j].Name
-	})
 
-	toplevel.Main({{printf "%q" $.BinaryName}}, tlt,
+	vtlt := []toplevel.Target{
+{{- range .Vars}}
+		toplevel.Target{Name: {{lowerFirst .TargetName | printf "%q"}},
+			Fn: {{.VarName}},
+			Synopsis: {{printf "%q" .Synopsis}},
+			Comment: {{printf "%q" .Comment}}},
+{{- end}}
+{{- range .Imports}}
+{{- range .Info.Vars}}
+		toplevel.Target{Name: {{lowerFirst .TargetName | printf "%q"}},
+			Fn: {{.VarName}},
+			Synopsis: {{printf "%q" .Synopsis}},
+			Comment: {{printf "%q" .Comment}}},
+{{- end}}
+{{- end}}
+	}
+
+	toplevel.Main({{printf "%q" $.BinaryName}}, tlt, vtlt,
 		{{lowerFirst .DefaultFunc.TargetName | printf "%q"}},
 		{{printf "%q" .Description}},
 		{{.Module | printf "%q"}})
