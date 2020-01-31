@@ -1,4 +1,4 @@
-## About
+# Game
 
 Game is a Make-like build tool using Go.
 
@@ -15,18 +15,18 @@ You describe build tasks in Go, and Game runs them.
 Join the `#game` channel on [gophers slack](https://gophers.slack.com/) or
 [gamefile Google Group](https://groups.google.com/forum/#!forum/gamefile).
 
-# Documentation
+## Documentation
 
 Documentation website TBD, see [this directory](site/content) in meantime.
 
 See [godoc](https://godoc.org/github.com/ridge/game/game) for how to use Game as
 a library.
 
-# Why?
+## Why?
 
 Mage has a [great answer](https://magefile.org/#why).
 
-# How is Game different from Mage?
+## How is Game different from Mage?
 
 Game is indeed a a fork of [Mage](https://magefile.org).
 
@@ -44,6 +44,6 @@ of readability for features.
   - GOPATH environment support
   - Shorthand tasks definition without `Context` parameter
 
-# License
+## License
 
 Game is licensed under terms of [Apache 2.0 license](LICENSE).
