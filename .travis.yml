@@ -1,0 +1,23 @@
+language: go
+cache:
+  directories:
+  - $HOME/.cache/go-build
+  - $GOPATH/pkg/mod
+go:
+- tip
+- 1.13.x
+- 1.12.x
+install: true
+script:
+- go vet ./...
+- go test -race ./...
+
+jobs:
+  include:
+  - name: macOS
+    os: osx
+    osx_image: xcode11.2
+    language: go
+  - name: Windows
+    os: windows
+    language: go
