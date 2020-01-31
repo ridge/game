@@ -164,13 +164,15 @@ func TestTransitiveHashFast(t *testing.T) {
 	}
 }
 
+var j = filepath.Join
+
 func TestListGamefilesMain(t *testing.T) {
 	buf := &bytes.Buffer{}
 	files, err := Gamefiles("testdata/mixed_main_files", "", "", "go", buf, false)
 	if err != nil {
 		t.Errorf("error from gamefile list: %v: %s", err, buf)
 	}
-	expected := []string{"testdata/mixed_main_files/game_helpers.go", "testdata/mixed_main_files/gamefile.go"}
+	expected := []string{j("testdata", "mixed_main_files", "game_helpers.go"), j("testdata", "mixed_main_files", "gamefile.go")}
 	if !reflect.DeepEqual(files.files, expected) {
 		t.Fatalf("expected %q but got %q", expected, files.files)
 	}
@@ -190,9 +192,9 @@ func TestListGamefilesIgnoresGOOS(t *testing.T) {
 	}
 	var expected []string
 	if runtime.GOOS == "windows" {
-		expected = []string{"testdata/goos_gamefiles/gamefile_windows.go"}
+		expected = []string{j("testdata", "goos_gamefiles", "gamefile_windows.go")}
 	} else {
-		expected = []string{"testdata/goos_gamefiles/gamefile_nonwindows.go"}
+		expected = []string{j("testdata", "goos_gamefiles", "gamefile_nonwindows.go")}
 	}
 	if !reflect.DeepEqual(files.files, expected) {
 		t.Fatalf("expected %q but got %q", expected, files.files)
@@ -213,9 +215,9 @@ func TestListGamefilesIgnoresRespectsGOOSArg(t *testing.T) {
 	}
 	var expected []string
 	if goos == "windows" {
-		expected = []string{"testdata/goos_gamefiles/gamefile_windows.go"}
+		expected = []string{j("testdata", "goos_gamefiles", "gamefile_windows.go")}
 	} else {
-		expected = []string{"testdata/goos_gamefiles/gamefile_nonwindows.go"}
+		expected = []string{j("testdata", "goos_gamefiles", "gamefile_nonwindows.go")}
 	}
 	if !reflect.DeepEqual(files.files, expected) {
 		t.Fatalf("expected %q but got %q", expected, files.files)
@@ -247,7 +249,7 @@ func TestCompileDiffGoosGoarch(t *testing.T) {
 		Debug:  true,
 		Dir:    "testdata",
 		// this is relative to the Dir above
-		CompileOut: filepath.Join(".", filepath.Base(target), "output"),
+		CompileOut: j(".", filepath.Base(target), "output"),
 		GOOS:       goos,
 		GOARCH:     goarch,
 	}
@@ -255,7 +257,7 @@ func TestCompileDiffGoosGoarch(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("got code %v, err: %s", code, stderr)
 	}
-	os, arch, err := fileData(filepath.Join(target, "output"))
+	os, arch, err := fileData(j(target, "output"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +287,7 @@ func TestListGamefilesLib(t *testing.T) {
 	if err != nil {
 		t.Errorf("error from gamefile list: %v: %s", err, buf)
 	}
-	expected := []string{"testdata/mixed_lib_files/game_helpers.go", "testdata/mixed_lib_files/gamefile.go"}
+	expected := []string{j("testdata", "mixed_lib_files", "game_helpers.go"), j("testdata", "mixed_lib_files", "gamefile.go")}
 	if !reflect.DeepEqual(files.files, expected) {
 		t.Fatalf("expected %q but got %q", expected, files.files)
 	}
@@ -860,6 +862,15 @@ func TestRunCompiledPrintsError(t *testing.T) {
 	}
 }
 
+func exe(s string) string {
+	switch runtime.GOOS {
+	case "windows":
+		return s + ".exe"
+	default:
+		return s
+	}
+}
+
 func TestCompiledFlags(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	stdout := &bytes.Buffer{}
@@ -868,7 +879,7 @@ func TestCompiledFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	name := filepath.Join(compileDir, "game_out")
+	name := j(compileDir, exe("game_out"))
 	// The CompileOut directory is relative to the
 	// invocation directory, so chop off the invocation dir.
 	outName := "./" + name[len(dir)-1:]
@@ -952,7 +963,7 @@ func TestCompiledEnvironmentVars(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	name := filepath.Join(compileDir, "game_out")
+	name := j(compileDir, exe("game_out"))
 	// The CompileOut directory is relative to the
 	// invocation directory, so chop off the invocation dir.
 	outName := "./" + name[len(dir)-1:]
@@ -1127,7 +1138,7 @@ func TestGoModules(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	err = ioutil.WriteFile(filepath.Join(dir, "gamefile.go"), []byte(`//+build game
+	err = ioutil.WriteFile(j(dir, "gamefile.go"), []byte(`//+build game
 
 package main
 
@@ -1140,9 +1151,9 @@ func Test() {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ioutil.WriteFile(filepath.Join(dir, "go.mod"), []byte(`module foo.bar/baz
+	err = ioutil.WriteFile(j(dir, "go.mod"), []byte(`module foo.bar/baz
 
-replace github.com/ridge/game => `+filepath.Join(findSourcePath(), "../..")+`
+replace github.com/ridge/game => `+j(findSourcePath(), "../..")+`
 
 require (
 	github.com/ridge/game v1.0.0
