@@ -1,13 +1,13 @@
-project_name: mage
+project_name: game
 release:
   github:
-    owner: magefile
-    name: mage
+    owner: ridge
+    name: game
   draft: true
 build:
-  binary: mage
+  binary: game
   main: .
-  ldflags: -s -w -X github.com/magefile/mage/mage.timestamp={{.Date}} -X github.com/magefile/mage/mage.commitHash={{.Commit}} -X github.com/magefile/mage/mage.gitTag={{.Version}}
+  ldflags: -s -w -X github.com/ridge/game/game.timestamp={{.Date}} -X github.com/ridge/game/game.commitHash={{.Commit}} -X github.com/ridge/game/game.gitTag={{.Version}}
   goos:
     - darwin
     - linux

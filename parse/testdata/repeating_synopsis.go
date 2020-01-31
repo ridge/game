@@ -1,4 +1,4 @@
-// +build mage
+// +build game
 
 package main
 

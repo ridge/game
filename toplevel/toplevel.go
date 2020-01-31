@@ -16,7 +16,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/magefile/mage/task"
+	"github.com/ridge/game/task"
 )
 
 type consoleReporter struct {
@@ -282,7 +282,7 @@ func run(ctx context.Context, tasks []*task.Task, tracingFile string) (exitCode 
 	return 0
 }
 
-// Main is the main function for generated Mage binary
+// Main is the main function for generated Game binary
 func Main(binaryName string, targets []Target, varTargets []Target, defaultTarget string, desc string, module string) {
 	verbose := false
 	list := false // print out a list of targets

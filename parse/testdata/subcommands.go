@@ -1,8 +1,8 @@
-// +build mage
+// +build game
 
 package main
 
-import "github.com/magefile/mage/mg"
+import "github.com/ridge/game/mg"
 
 type Build mg.Namespace
 
