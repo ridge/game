@@ -3,7 +3,7 @@ package mg
 import (
 	"io"
 
-	"github.com/magefile/mage/task"
+	"github.com/ridge/game/task"
 )
 
 // SerialCtxDeps is a backward-compatible way to say ctx.Dep(fn1); ctx.Dep(fn2)...

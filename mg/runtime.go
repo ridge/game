@@ -8,45 +8,45 @@ import (
 )
 
 // CacheEnv is the environment variable that users may set to change the
-// location where mage stores its compiled binaries.
+// location where game stores its compiled binaries.
 const CacheEnv = "MAGEFILE_CACHE"
 
 // VerboseEnv is the environment variable that indicates the user requested
-// verbose mode when running a magefile.
+// verbose mode when running a gamefile.
 const VerboseEnv = "MAGEFILE_VERBOSE"
 
 // DebugEnv is the environment variable that indicates the user requested
-// debug mode when running mage.
+// debug mode when running game.
 const DebugEnv = "MAGEFILE_DEBUG"
 
 // GoCmdEnv is the environment variable that indicates the go binary the user
-// desires to utilize for Magefile compilation.
+// desires to utilize for Gamefile compilation.
 const GoCmdEnv = "MAGEFILE_GOCMD"
 
 // IgnoreDefaultEnv is the environment variable that indicates the user requested
-// to ignore the default target specified in the magefile.
+// to ignore the default target specified in the gamefile.
 const IgnoreDefaultEnv = "MAGEFILE_IGNOREDEFAULT"
 
 // HashFastEnv is the environment variable that indicates the user requested to
-// use a quick hash of magefiles to determine whether or not the magefile binary
-// needs to be rebuilt. This results in faster runtimes, but means that mage
+// use a quick hash of gamefiles to determine whether or not the gamefile binary
+// needs to be rebuilt. This results in faster runtimes, but means that game
 // will fail to rebuild if a dependency has changed. To force a rebuild, run
-// mage with the -f flag.
+// game with the -f flag.
 const HashFastEnv = "MAGEFILE_HASHFAST"
 
-// Verbose reports whether a magefile was run with the verbose flag.
+// Verbose reports whether a gamefile was run with the verbose flag.
 func Verbose() bool {
 	b, _ := strconv.ParseBool(os.Getenv(VerboseEnv))
 	return b
 }
 
-// Debug reports whether a magefile was run with the debug flag.
+// Debug reports whether a gamefile was run with the debug flag.
 func Debug() bool {
 	b, _ := strconv.ParseBool(os.Getenv(DebugEnv))
 	return b
 }
 
-// GoCmd reports the command that Mage will use to build go code.  By default mage runs
+// GoCmd reports the command that Game will use to build go code.  By default game runs
 // the "go" binary in the PATH.
 func GoCmd() string {
 	if cmd := os.Getenv(GoCmdEnv); cmd != "" {
@@ -63,14 +63,14 @@ func HashFast() bool {
 }
 
 // IgnoreDefault reports whether the user has requested to ignore the default target
-// in the magefile.
+// in the gamefile.
 func IgnoreDefault() bool {
 	b, _ := strconv.ParseBool(os.Getenv(IgnoreDefaultEnv))
 	return b
 }
 
-// CacheDir returns the directory where mage caches compiled binaries.  It
-// defaults to $HOME/.magefile, but may be overridden by the MAGEFILE_CACHE
+// CacheDir returns the directory where game caches compiled binaries.  It
+// defaults to $HOME/.gamefile, but may be overridden by the MAGEFILE_CACHE
 // environment variable.
 func CacheDir() string {
 	d := os.Getenv(CacheEnv)
@@ -79,9 +79,9 @@ func CacheDir() string {
 	}
 	switch runtime.GOOS {
 	case "windows":
-		return filepath.Join(os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"), "magefile")
+		return filepath.Join(os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"), "gamefile")
 	default:
-		return filepath.Join(os.Getenv("HOME"), ".magefile")
+		return filepath.Join(os.Getenv("HOME"), ".gamefile")
 	}
 }
 

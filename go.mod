@@ -1,3 +1,3 @@
-module github.com/magefile/mage
+module github.com/ridge/game
 
 go 1.12

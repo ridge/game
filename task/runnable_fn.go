@@ -79,7 +79,7 @@ func (ncvf namespaceContextVoidFn) Run(ctx Context) {
 }
 
 func boringFunction(f string) bool {
-	return f == "" || f == "runtime.Callers" || strings.HasPrefix(f, "github.com/magefile/mage/")
+	return f == "" || f == "runtime.Callers" || strings.HasPrefix(f, "github.com/ridge/game/")
 }
 
 // Returns a location of mg.Deps invocation where the error originates

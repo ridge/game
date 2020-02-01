@@ -80,7 +80,7 @@ func (t *Task) SelfDuration() time.Duration {
 type contextKey string
 
 const (
-	taskContextKey = contextKey("mage.task")
+	taskContextKey = contextKey("game.task")
 )
 
 type flushWriter interface {

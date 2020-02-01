@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/magefile/mage/internal"
+	"github.com/ridge/game/internal"
 )
 
-const importTag = "mage:import"
+const importTag = "game:import"
 
 var debug = log.New(ioutil.Discard, "DEBUG: ", log.Ltime|log.Lmicroseconds)
 
@@ -37,7 +37,7 @@ type Var struct {
 }
 
 // TargetName returns the name of the target as it should appear when used from
-// the mage CLI.
+// the game CLI.
 func (v Var) TargetName() string {
 	name := v.name
 	if v.pkgAlias != "" {
@@ -62,7 +62,7 @@ type PrimaryPkgInfo struct {
 	Imports     []*Import
 }
 
-// PkgInfo contains inforamtion about a package of files according to mage's
+// PkgInfo contains inforamtion about a package of files according to game's
 // parsing rules.
 type PkgInfo struct {
 	Description string
@@ -70,7 +70,7 @@ type PkgInfo struct {
 	Vars        []*Var
 }
 
-// Function represented a job function from a mage file
+// Function represented a job function from a game file
 type Function struct {
 	Synopsis string
 	Comment  string
@@ -98,7 +98,7 @@ func (f Function) ID() string {
 }
 
 // TargetName returns the name of the target as it should appear when used from
-// the mage cli.  It is always lowercase.
+// the game cli.  It is always lowercase.
 func (f Function) TargetName() string {
 	var names []string
 
@@ -172,11 +172,11 @@ func checkDupes(ifuncs []*Function, imports []*Import) error {
 	return errors.New(strings.Join(errs, "\n"))
 }
 
-// Package compiles information about a mage package.
+// Package compiles information about a game package.
 func Package(path string, files []string) (*PkgInfo, *ast.Package, *doc.Package, error) {
 	start := time.Now()
 	defer func() {
-		debug.Println("time parse Magefiles:", time.Since(start))
+		debug.Println("time parse Gamefiles:", time.Since(start))
 	}()
 	fset := token.NewFileSet()
 	pkg, err := getPackage(path, files, fset)
@@ -379,10 +379,10 @@ func getImports(gocmd string, funcs []*Function, vars []*Var, astPkg *ast.Packag
 	// have to set unique package names on imports
 	used := map[string]bool{}
 	for _, imp := range imports {
-		unique := imp.Name + "_mageimport"
+		unique := imp.Name + "_gameimport"
 		x := 1
 		for used[unique] {
-			unique = fmt.Sprintf("%s_mageimport%d", imp.Name, x)
+			unique = fmt.Sprintf("%s_gameimport%d", imp.Name, x)
 			x++
 		}
 		used[unique] = true

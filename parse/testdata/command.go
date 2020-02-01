@@ -1,4 +1,4 @@
-// +build mage
+// +build game
 
 package main
 
@@ -6,8 +6,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/magefile/mage/mg"
-	"github.com/magefile/mage/task"
+	"github.com/ridge/game/mg"
+	"github.com/ridge/game/task"
 )
 
 // This should work as a default - even if it's in a different file
