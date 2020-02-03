@@ -87,4 +87,5 @@ func CacheDir() string {
 	}
 }
 
+// Namespace is a backward compatibility alias for task.Namespace
 type Namespace = task.Namespace
