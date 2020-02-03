@@ -294,11 +294,11 @@ func Main(binaryName string, targets []Target, varTargets []Target, defaultTarge
 	fs.SetOutput(os.Stdout)
 
 	// default flag set with ExitOnError and auto generated PrintDefaults should be sufficient
-	fs.BoolVar(&verbose, "v", parseBool("MAGEFILE_VERBOSE"), "show verbose output when running targets")
-	fs.BoolVar(&list, "l", parseBool("MAGEFILE_LIST"), "list targets for this binary")
-	fs.BoolVar(&help, "h", parseBool("MAGEFILE_HELP"), "print out help for a specific target")
-	fs.DurationVar(&timeout, "t", parseDuration("MAGEFILE_TIMEOUT"), "timeout in duration parsable format (e.g. 5m30s)")
-	fs.StringVar(&tracing, "trace", os.Getenv("MAGEFILE_TRACE"), "trace task execution and save to the given file in Chrome trace_event format")
+	fs.BoolVar(&verbose, "v", parseBool("GAMEFILE_VERBOSE"), "show verbose output when running targets")
+	fs.BoolVar(&list, "l", parseBool("GAMEFILE_LIST"), "list targets for this binary")
+	fs.BoolVar(&help, "h", parseBool("GAMEFILE_HELP"), "print out help for a specific target")
+	fs.DurationVar(&timeout, "t", parseDuration("GAMEFILE_TIMEOUT"), "timeout in duration parsable format (e.g. 5m30s)")
+	fs.StringVar(&tracing, "trace", os.Getenv("GAMEFILE_TRACE"), "trace task execution and save to the given file in Chrome trace_event format")
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stdout, `
 %s [options] [target]
@@ -349,7 +349,7 @@ Options:
 
 	if len(args) == 0 {
 		if defaultTarget != "" {
-			ignoreDefault, _ := strconv.ParseBool(os.Getenv("MAGEFILE_IGNOREDEFAULT"))
+			ignoreDefault, _ := strconv.ParseBool(os.Getenv("GAMEFILE_IGNOREDEFAULT"))
 			if ignoreDefault {
 				listTargets(targets, defaultTarget, desc)
 			} else {

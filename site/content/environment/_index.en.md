@@ -3,29 +3,29 @@ title = "Environment Variables"
 weight = 40
 +++
 
-## MAGEFILE_VERBOSE
+## GAMEFILE_VERBOSE
 
 Set to "1" or "true" to turn on verbose mode (like running with -v)
 
-## MAGEFILE_DEBUG 
+## GAMEFILE_DEBUG 
 
 Set to "1" or "true" to turn on debug mode (like running with -debug)
 
-## MAGEFILE_CACHE
+## GAMEFILE_CACHE
 
 Sets the directory where mage will store binaries compiled from magefiles
 (default is $HOME/.magefile)
 
-## MAGEFILE_GOCMD
+## GAMEFILE_GOCMD
 
 Sets the binary that mage will use to compile with (default is "go").
 
-## MAGEFILE_IGNOREDEFAULT
+## GAMEFILE_IGNOREDEFAULT
 
 If set to "1" or "true", tells the compiled magefile to ignore the default
 target and print the list of targets when you run `mage`.
 
-## MAGEFILE_HASHFAST
+## GAMEFILE_HASHFAST
 
 If set to "1" or "true", tells mage to use a quick hash of magefiles to
 determine whether or not the magefile binary needs to be rebuilt. This results

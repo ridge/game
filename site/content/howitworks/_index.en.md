@@ -15,7 +15,7 @@ binary is also used in the hash.
 ## Binary Cache
 
 Compiled magefile binaries are stored in $HOME/.magefile.  This location can be
-customized by setting the MAGEFILE_CACHE environment variable.
+customized by setting the GAMEFILE_CACHE environment variable.
 
 ## Go Environment
 
