@@ -273,7 +273,7 @@ func run(ctx context.Context, tasks []*task.Task, tracingFile string) (exitCode 
 	}()
 
 	for _, t := range tasks {
-		t.Run(task.Context{ctx})
+		t.Run(task.Context{Context: ctx})
 		if t.Error != nil {
 			printFailure(t, 0)
 			return 1
