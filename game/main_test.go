@@ -363,8 +363,8 @@ func TestVerbose(t *testing.T) {
 }
 
 func TestVerboseEnv(t *testing.T) {
-	os.Setenv("MAGEFILE_VERBOSE", "true")
-	defer os.Unsetenv("MAGEFILE_VERBOSE")
+	os.Setenv("GAMEFILE_VERBOSE", "true")
+	defer os.Unsetenv("GAMEFILE_VERBOSE")
 	stdout := &bytes.Buffer{}
 	inv, _, err := Parse(ioutil.Discard, stdout, []string{})
 	if err != nil {
@@ -378,8 +378,8 @@ func TestVerboseEnv(t *testing.T) {
 	}
 }
 func TestVerboseFalseEnv(t *testing.T) {
-	os.Setenv("MAGEFILE_VERBOSE", "0")
-	defer os.Unsetenv("MAGEFILE_VERBOSE")
+	os.Setenv("GAMEFILE_VERBOSE", "0")
+	defer os.Unsetenv("GAMEFILE_VERBOSE")
 	stdout := &bytes.Buffer{}
 	code := ParseAndRun(ioutil.Discard, stdout, nil, []string{"-d", "testdata", "testverbose"})
 	if code != 0 {
@@ -993,7 +993,7 @@ func TestCompiledEnvironmentVars(t *testing.T) {
 		return nil
 	}
 
-	if err := run(stdout, stderr, name, "MAGEFILE_HELP=1", "deploy"); err != nil {
+	if err := run(stdout, stderr, name, "GAMEFILE_HELP=1", "deploy"); err != nil {
 		t.Fatal(err)
 	}
 	got := strings.TrimSpace(stdout.String())
@@ -1011,7 +1011,7 @@ func TestCompiledEnvironmentVars(t *testing.T) {
 		t.Errorf("got %q, does not contain %q", got, want)
 	}
 
-	if err := run(stdout, stderr, name, "MAGEFILE_LIST=1"); err != nil {
+	if err := run(stdout, stderr, name, "GAMEFILE_LIST=1"); err != nil {
 		t.Fatal(err)
 	}
 	got = stdout.String()
@@ -1033,7 +1033,7 @@ func TestCompiledEnvironmentVars(t *testing.T) {
 		t.Errorf("got %q, does not contain %q", got, want)
 	}
 
-	err = run(stdout, stderr, name, "MAGEFILE_TIMEOUT=1ms", "sleep")
+	err = run(stdout, stderr, name, "GAMEFILE_TIMEOUT=1ms", "sleep")
 	if err == nil {
 		t.Fatalf("expected an error because of timeout")
 	}
