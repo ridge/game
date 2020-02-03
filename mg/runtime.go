@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+
+	"github.com/ridge/game/task"
 )
 
 // CacheEnv is the environment variable that users may set to change the
@@ -85,5 +87,4 @@ func CacheDir() string {
 	}
 }
 
-// Namespace allows for the grouping of similar commands
-type Namespace struct{}
+type Namespace = task.Namespace
