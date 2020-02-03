@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/ridge/game/mg"
 	"github.com/ridge/game/task"
 )
 
@@ -18,8 +17,7 @@ func (pd ParameterizedDep) Run(ctx task.Context) {
 }
 
 func Main(ctx task.Context) {
-	mg.CtxDeps(ctx,
-		ParameterizedDep{1},
+	ctx.Dep(ParameterizedDep{1},
 		ParameterizedDep{2},
 		ParameterizedDep{3},
 		ParameterizedDep{4},
@@ -31,11 +29,9 @@ func Main(ctx task.Context) {
 		ParameterizedDep{6},
 		ParameterizedDep{2},
 	)
-	mg.SerialCtxDeps(ctx,
-		ParameterizedDep{1},
-		ParameterizedDep{2},
-		ParameterizedDep{5},
-	)
+	ctx.Dep(ParameterizedDep{1})
+	ctx.Dep(ParameterizedDep{2})
+	ctx.Dep(ParameterizedDep{5})
 }
 
 var Default = Main

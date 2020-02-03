@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/ridge/game/mg"
 	"github.com/ridge/game/task"
 )
 
@@ -20,7 +19,7 @@ func TestVerbose(ctx task.Context) {
 
 // This is the synopsis for Deploy. This part shouldn't show up.
 func Deploy(ctx task.Context) {
-	mg.CtxDeps(ctx, f)
+	ctx.Dep(f)
 }
 
 // Sleep sleeps 5 seconds.

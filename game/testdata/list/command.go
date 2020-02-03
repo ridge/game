@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ridge/game/mg"
 	"github.com/ridge/game/task"
 )
 
@@ -26,7 +25,7 @@ func TestVerbose() {
 
 // This is the synopsis for SomePig.  There's more data that won't show up.
 func SomePig(ctx task.Context) {
-	mg.CtxDeps(ctx, f)
+	ctx.Dep(f)
 }
 
 func f() {}
