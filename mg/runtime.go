@@ -5,34 +5,36 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+
+	"github.com/ridge/game/task"
 )
 
 // CacheEnv is the environment variable that users may set to change the
 // location where game stores its compiled binaries.
-const CacheEnv = "MAGEFILE_CACHE"
+const CacheEnv = "GAMEFILE_CACHE"
 
 // VerboseEnv is the environment variable that indicates the user requested
 // verbose mode when running a gamefile.
-const VerboseEnv = "MAGEFILE_VERBOSE"
+const VerboseEnv = "GAMEFILE_VERBOSE"
 
 // DebugEnv is the environment variable that indicates the user requested
 // debug mode when running game.
-const DebugEnv = "MAGEFILE_DEBUG"
+const DebugEnv = "GAMEFILE_DEBUG"
 
 // GoCmdEnv is the environment variable that indicates the go binary the user
 // desires to utilize for Gamefile compilation.
-const GoCmdEnv = "MAGEFILE_GOCMD"
+const GoCmdEnv = "GAMEFILE_GOCMD"
 
 // IgnoreDefaultEnv is the environment variable that indicates the user requested
 // to ignore the default target specified in the gamefile.
-const IgnoreDefaultEnv = "MAGEFILE_IGNOREDEFAULT"
+const IgnoreDefaultEnv = "GAMEFILE_IGNOREDEFAULT"
 
 // HashFastEnv is the environment variable that indicates the user requested to
 // use a quick hash of gamefiles to determine whether or not the gamefile binary
 // needs to be rebuilt. This results in faster runtimes, but means that game
 // will fail to rebuild if a dependency has changed. To force a rebuild, run
 // game with the -f flag.
-const HashFastEnv = "MAGEFILE_HASHFAST"
+const HashFastEnv = "GAMEFILE_HASHFAST"
 
 // Verbose reports whether a gamefile was run with the verbose flag.
 func Verbose() bool {
@@ -70,7 +72,7 @@ func IgnoreDefault() bool {
 }
 
 // CacheDir returns the directory where game caches compiled binaries.  It
-// defaults to $HOME/.gamefile, but may be overridden by the MAGEFILE_CACHE
+// defaults to $HOME/.gamefile, but may be overridden by the GAMEFILE_CACHE
 // environment variable.
 func CacheDir() string {
 	d := os.Getenv(CacheEnv)
@@ -85,5 +87,5 @@ func CacheDir() string {
 	}
 }
 
-// Namespace allows for the grouping of similar commands
-type Namespace struct{}
+// Namespace is a backward compatibility alias for task.Namespace
+type Namespace = task.Namespace

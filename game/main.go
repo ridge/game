@@ -314,7 +314,7 @@ func Invoke(inv Invocation) int {
 
 	useCache := false
 	if inv.HashFast {
-		debug.Println("user has set MAGEFILE_HASHFAST, so we'll ignore GOCACHE")
+		debug.Println("user has set GAMEFILE_HASHFAST, so we'll ignore GOCACHE")
 	} else {
 		s, err := internal.OutputDebug(inv.GoCmd, "env", "GOCACHE")
 		if err != nil {
@@ -686,27 +686,27 @@ func RunCompiled(inv Invocation, exePath string, errlog *log.Logger) int {
 	// to deal with it.
 	c.Env = os.Environ()
 	if inv.Verbose {
-		c.Env = append(c.Env, "MAGEFILE_VERBOSE=1")
+		c.Env = append(c.Env, "GAMEFILE_VERBOSE=1")
 	}
 	if inv.List {
-		c.Env = append(c.Env, "MAGEFILE_LIST=1")
+		c.Env = append(c.Env, "GAMEFILE_LIST=1")
 	}
 	if inv.Help {
-		c.Env = append(c.Env, "MAGEFILE_HELP=1")
+		c.Env = append(c.Env, "GAMEFILE_HELP=1")
 	}
 	if inv.Debug {
-		c.Env = append(c.Env, "MAGEFILE_DEBUG=1")
+		c.Env = append(c.Env, "GAMEFILE_DEBUG=1")
 	}
 	if inv.GoCmd != "" {
-		c.Env = append(c.Env, fmt.Sprintf("MAGEFILE_GOCMD=%s", inv.GoCmd))
+		c.Env = append(c.Env, fmt.Sprintf("GAMEFILE_GOCMD=%s", inv.GoCmd))
 	}
 	if inv.Timeout > 0 {
-		c.Env = append(c.Env, fmt.Sprintf("MAGEFILE_TIMEOUT=%s", inv.Timeout.String()))
+		c.Env = append(c.Env, fmt.Sprintf("GAMEFILE_TIMEOUT=%s", inv.Timeout.String()))
 	}
 	if inv.Trace != "" {
-		c.Env = append(c.Env, "MAGEFILE_TRACE="+inv.Trace)
+		c.Env = append(c.Env, "GAMEFILE_TRACE="+inv.Trace)
 	}
-	debug.Print("running gamefile with game vars:\n", strings.Join(filter(c.Env, "MAGEFILE"), "\n"))
+	debug.Print("running gamefile with game vars:\n", strings.Join(filter(c.Env, "GAMEFILE"), "\n"))
 	err := c.Run()
 	if !cmdRan(err) {
 		errlog.Printf("failed to run compiled gamefile: %v", err)
