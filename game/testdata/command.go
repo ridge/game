@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ridge/game/mg"
 	"github.com/ridge/game/task"
 )
 
@@ -24,7 +23,7 @@ func TestVerbose() {
 }
 
 func ReturnsVoid(ctx task.Context) {
-	mg.CtxDeps(ctx, f)
+	ctx.Dep(f)
 }
 
 func f() {}

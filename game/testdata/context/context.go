@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ridge/game/mg"
 	"github.com/ridge/game/task"
 )
 
@@ -25,5 +24,5 @@ func Timeout(ctx task.Context) {
 }
 
 func CtxDeps(ctx task.Context) {
-	mg.CtxDeps(ctx, TakesContextNoError)
+	ctx.Dep(TakesContextNoError)
 }

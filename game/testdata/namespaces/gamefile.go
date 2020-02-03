@@ -12,7 +12,7 @@ import (
 var Default = NS.BareCtx
 
 func TestNamespaceDep(ctx task.Context) {
-	mg.CtxDeps(ctx, NS.BareCtx)
+	ctx.Dep(NS.BareCtx)
 }
 
 type NS mg.Namespace
