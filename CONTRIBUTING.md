@@ -33,7 +33,7 @@ dependencies of Game.
 
 ## Versions
 
-Game works with Go >= 1.13. CI (will soon) check it.
+Game works with Go >= 1.13. CI checks it.
 
 ## Testing
 
