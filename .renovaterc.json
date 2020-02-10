@@ -1,0 +1,14 @@
+{
+  "extends": ["config:base"],
+
+  "enabledManagers": ["gomod"],
+  "postUpdateOptions": ["gomodTidy"],
+
+  "prConcurrentLimit": 5,
+
+  "labels": ["pr-update"],
+  "stabilityDays": 3,
+
+  "rebaseStalePrs": true,
+  "rebaseLabel": "pr-rebase"
+}
