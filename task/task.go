@@ -82,10 +82,23 @@ func (t *Task) StoreLine(line string) {
 	t.storedOutput += line
 }
 
+func getTail(s string) string {
+	lines := strings.Split(s, "\n")
+
+	if len(lines) < 100 {
+		return s
+	}
+	ret := "<truncated, see log>\n"
+	for i := len(lines) - 100; i < len(lines); i++ {
+		ret += lines[i]+"\n"
+	}
+	return ret
+}
+
 func (t *Task) GetStoredOutput() string {
 	s := t.storedOutput
 	t.storedOutput = ""
-	return s
+	return getTail(s)
 }
 
 type contextKey string
