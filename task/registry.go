@@ -15,12 +15,18 @@ const (
 	StderrStream Stream = 2
 )
 
+// LogLine is struct that unites line to be printed with type of stream (stdout or stderr)
+type LogLine struct {
+	Stream Stream
+	Line string
+}
+
 // Reporter reports events
 type Reporter interface {
 	Started(t *Task)
 	Finished(t *Task)
 	Dependencies(dependent *Task, dependees []*Task, sequential bool)
-	OutputLine(t *Task, time time.Time, stream Stream, line string)
+	OutputLine(t *Task, time time.Time, line LogLine)
 }
 
 // Registry registers runnables for execution

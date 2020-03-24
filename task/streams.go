@@ -20,9 +20,9 @@ func (sls *streamLineSink) Add(t time.Time, input string) {
 		if strings.HasSuffix(line, "\n") {
 			// full line
 			if sls.tail == "" {
-				sls.reporter.OutputLine(sls.task, t, sls.stream, line)
+				sls.reporter.OutputLine(sls.task, t, LogLine{Stream: sls.stream, Line: line})
 			} else {
-				sls.reporter.OutputLine(sls.task, sls.tailTime, sls.stream, sls.tail+line)
+				sls.reporter.OutputLine(sls.task, sls.tailTime, LogLine{Stream: sls.stream, Line: sls.tail+line})
 				sls.tail = ""
 			}
 		} else {
@@ -39,7 +39,7 @@ func (sls *streamLineSink) Add(t time.Time, input string) {
 
 func (sls *streamLineSink) Flush(t time.Time) {
 	if sls.tail != "" {
-		sls.reporter.OutputLine(sls.task, sls.tailTime, sls.stream, sls.tail+"\n")
+		sls.reporter.OutputLine(sls.task, sls.tailTime, LogLine{Stream: sls.stream, Line: sls.tail+"\n"})
 		sls.tail = ""
 	}
 }

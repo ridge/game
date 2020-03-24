@@ -29,6 +29,7 @@ type Task struct {
 	// Fields below are filled during t.Run()
 	Spans []Span
 	Error error // nil if the task succeeded
+	storedOutput string
 }
 
 // StringID formats task ID
@@ -75,6 +76,16 @@ func (t *Task) SelfDuration() time.Duration {
 		}
 	}
 	return d
+}
+
+func (t *Task) StoreLine(line string) {
+	t.storedOutput += line
+}
+
+func (t *Task) GetStoredOutput() string {
+	s := t.storedOutput
+	t.storedOutput = ""
+	return s
 }
 
 type contextKey string

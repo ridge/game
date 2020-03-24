@@ -50,7 +50,7 @@ func (cr consoleReporter) Finished(t *task.Task) {
 			if line == "" {
 				continue
 			}
-			cr.OutputLine(t, t.End(), task.StderrStream, line)
+			cr.OutputLine(t, t.End(), task.LogLine{Stream: task.StderrStream, Line: line})
 		}
 	}
 	dur := t.Duration()
@@ -59,12 +59,13 @@ func (cr consoleReporter) Finished(t *task.Task) {
 		t.StringID(), tag, t.Name(), dur.Seconds(), self.Seconds(), (dur - self).Seconds())
 }
 
-func (consoleReporter) OutputLine(t *task.Task, time time.Time, stream task.Stream, line string) {
+func (consoleReporter) OutputLine(t *task.Task, time time.Time, line task.LogLine) {
 	tag := " "
-	if stream == task.StderrStream {
+	if line.Stream == task.StderrStream {
 		tag = "E"
 	}
-	fmt.Printf("%s %s | %s", t.StringID(), tag, line)
+	fmt.Printf("%s %s | %s", t.StringID(), tag, line.Line)
+	t.StoreLine(line.Line)
 }
 
 // Target is one build target
@@ -151,6 +152,9 @@ func printMultilineIndented(prefix, msg string) {
 }
 
 func printFailure(t *task.Task, indent int) {
+	if indent == 0 {
+		fmt.Println()
+	}
 	prefix := fmt.Sprintf("%s%s failed", strings.Repeat("    ", indent), t.String())
 
 	if subErr, ok := t.Error.(task.SubtasksFailure); ok {
@@ -162,6 +166,10 @@ func printFailure(t *task.Task, indent int) {
 	}
 
 	printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
+	log := t.GetStoredOutput()
+	if log != "" {
+		printMultilineIndented(fmt.Sprintf("%s", strings.Repeat("    ", indent)), log)
+	}
 }
 
 type eventType string
