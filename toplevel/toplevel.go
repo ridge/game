@@ -50,7 +50,7 @@ func (cr consoleReporter) Finished(t *task.Task) {
 			if line == "" {
 				continue
 			}
-			cr.OutputLine(t, t.End(), task.StderrStream, line)
+			cr.OutputLine(t, t.End(), task.LogLine{Stream: task.StderrStream, Line: line})
 		}
 	}
 	dur := t.Duration()
@@ -59,12 +59,13 @@ func (cr consoleReporter) Finished(t *task.Task) {
 		t.StringID(), tag, t.Name(), dur.Seconds(), self.Seconds(), (dur - self).Seconds())
 }
 
-func (consoleReporter) OutputLine(t *task.Task, time time.Time, stream task.Stream, line string) {
+func (consoleReporter) OutputLine(t *task.Task, time time.Time, line task.LogLine) {
 	tag := " "
-	if stream == task.StderrStream {
+	if line.Stream == task.StderrStream {
 		tag = "E"
 	}
-	fmt.Printf("%s %s | %s", t.StringID(), tag, line)
+	fmt.Printf("%s %s | %s", t.StringID(), tag, line.Line)
+	t.StoreLine(line.Line)
 }
 
 // Target is one build target
@@ -150,18 +151,32 @@ func printMultilineIndented(prefix, msg string) {
 	}
 }
 
-func printFailure(t *task.Task, indent int) {
-	prefix := fmt.Sprintf("%s%s failed", strings.Repeat("    ", indent), t.String())
+func printFailures(t *task.Task) {
+	fmt.Println()
+	seenTasks := map[*task.Task]bool{}
 
-	if subErr, ok := t.Error.(task.SubtasksFailure); ok {
-		fmt.Printf("%s, caused by\n", prefix)
-		for _, subtask := range subErr {
-			printFailure(subtask, indent+1)
+	var printFailure func(t *task.Task, indent int)
+	printFailure = func(t *task.Task, indent int) {
+		strIndent := strings.Repeat("    ", indent)
+		prefix := fmt.Sprintf("%s%s failed", strIndent, t.String())
+
+		if subErr, ok := t.Error.(task.SubtasksFailure); ok {
+			fmt.Printf("%s, caused by\n", prefix)
+			for _, subtask := range subErr {
+				printFailure(subtask, indent+1)
+			}
+			return
 		}
-		return
-	}
 
-	printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
+		printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
+		if _, seen := seenTasks[t]; !seen {
+			printMultilineIndented(strIndent, t.OutputTail())
+			seenTasks[t] = true
+		} else {
+			printMultilineIndented(strIndent, "<see above>")
+		}
+	}
+	printFailure(t, 0)
 }
 
 type eventType string
@@ -275,7 +290,7 @@ func run(ctx context.Context, tasks []*task.Task, tracingFile string) (exitCode 
 	for _, t := range tasks {
 		t.Run(task.Context{Context: ctx})
 		if t.Error != nil {
-			printFailure(t, 0)
+			printFailures(t)
 			return 1
 		}
 	}
