@@ -29,7 +29,7 @@ type Task struct {
 	// Fields below are filled during t.Run()
 	Spans []Span
 	Error error // nil if the task succeeded
-	storedOutput string
+	output []string
 }
 
 // StringID formats task ID
@@ -79,26 +79,27 @@ func (t *Task) SelfDuration() time.Duration {
 }
 
 func (t *Task) StoreLine(line string) {
-	t.storedOutput += line
+	if t.output == nil {
+		t.output = make([]string, 10)
+	}
+	t.output = append(t.output, line)
 }
 
-func getTail(s string) string {
-	lines := strings.Split(s, "\n")
-
-	if len(lines) < 100 {
-		return s
+func getTail(lines []string) string {
+	var ret string
+	start := 0
+	if len(lines) > 100 {
+		ret = "<truncated, see log>\n"
+		start = len(lines) - 100
 	}
-	ret := "<truncated, see log>\n"
-	for i := len(lines) - 100; i < len(lines); i++ {
-		ret += lines[i]+"\n"
+	for i := start; i < len(lines); i++ {
+		ret += lines[i]
 	}
 	return ret
 }
 
 func (t *Task) GetStoredOutput() string {
-	s := t.storedOutput
-	t.storedOutput = ""
-	return getTail(s)
+	return getTail(t.output)
 }
 
 type contextKey string

@@ -151,25 +151,31 @@ func printMultilineIndented(prefix, msg string) {
 	}
 }
 
-func printFailure(t *task.Task, indent int) {
-	if indent == 0 {
-		fmt.Println()
-	}
-	prefix := fmt.Sprintf("%s%s failed", strings.Repeat("    ", indent), t.String())
+func printFailures(t *task.Task) {
+	seenTasks := make(map[*task.Task]bool)
 
-	if subErr, ok := t.Error.(task.SubtasksFailure); ok {
-		fmt.Printf("%s, caused by\n", prefix)
-		for _, subtask := range subErr {
-			printFailure(subtask, indent+1)
+	var printFailure func(t *task.Task, indent int)
+	printFailure = func(t *task.Task, indent int) {
+		strIndent := strings.Repeat("    ", indent)
+		prefix := fmt.Sprintf("%s%s failed", strIndent, t.String())
+
+		if subErr, ok := t.Error.(task.SubtasksFailure); ok {
+			fmt.Printf("%s, caused by\n", prefix)
+			for _, subtask := range subErr {
+				printFailure(subtask, indent+1)
+			}
+			return
 		}
-		return
-	}
 
-	printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
-	log := t.GetStoredOutput()
-	if log != "" {
-		printMultilineIndented(fmt.Sprintf("%s", strings.Repeat("    ", indent)), log)
+		printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
+		_, seen := seenTasks[t]
+		if !seen {
+			printMultilineIndented(strIndent, t.GetStoredOutput())
+		} else {
+			printMultilineIndented(strIndent, "<see above>")
+		}
 	}
+	printFailure(t, 0)
 }
 
 type eventType string
@@ -283,7 +289,8 @@ func run(ctx context.Context, tasks []*task.Task, tracingFile string) (exitCode 
 	for _, t := range tasks {
 		t.Run(task.Context{Context: ctx})
 		if t.Error != nil {
-			printFailure(t, 0)
+			fmt.Println()
+			printFailures(t)
 			return 1
 		}
 	}
