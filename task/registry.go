@@ -26,6 +26,9 @@ type Reporter interface {
 	Started(t *Task)
 	Finished(t *Task)
 	Dependencies(dependent *Task, dependees []*Task, sequential bool)
+	// OutputLine will send string to any of output streams defined by line.Stream
+	// as well as store it into task persistent storage
+	// line.Line should include end-of-line character
 	OutputLine(t *Task, time time.Time, line LogLine)
 }
 

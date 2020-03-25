@@ -152,7 +152,8 @@ func printMultilineIndented(prefix, msg string) {
 }
 
 func printFailures(t *task.Task) {
-	seenTasks := make(map[*task.Task]bool)
+	fmt.Println()
+	seenTasks := map[*task.Task]bool{}
 
 	var printFailure func(t *task.Task, indent int)
 	printFailure = func(t *task.Task, indent int) {
@@ -168,9 +169,9 @@ func printFailures(t *task.Task) {
 		}
 
 		printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
-		_, seen := seenTasks[t]
-		if !seen {
-			printMultilineIndented(strIndent, t.GetStoredOutput())
+		if _, seen := seenTasks[t]; !seen {
+			printMultilineIndented(strIndent, t.OutputTail())
+			seenTasks[t] = true
 		} else {
 			printMultilineIndented(strIndent, "<see above>")
 		}
@@ -289,7 +290,6 @@ func run(ctx context.Context, tasks []*task.Task, tracingFile string) (exitCode 
 	for _, t := range tasks {
 		t.Run(task.Context{Context: ctx})
 		if t.Error != nil {
-			fmt.Println()
 			printFailures(t)
 			return 1
 		}

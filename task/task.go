@@ -79,27 +79,20 @@ func (t *Task) SelfDuration() time.Duration {
 }
 
 func (t *Task) StoreLine(line string) {
-	if t.output == nil {
-		t.output = make([]string, 10)
-	}
 	t.output = append(t.output, line)
 }
 
-func getTail(lines []string) string {
+func (t *Task) OutputTail() string {
 	var ret string
 	start := 0
-	if len(lines) > 100 {
+	if len(t.output) > 100 {
 		ret = "<truncated, see log>\n"
-		start = len(lines) - 100
+		start = len(t.output) - 100
 	}
-	for i := start; i < len(lines); i++ {
-		ret += lines[i]
+	for i := start; i < len(t.output); i++ {
+		ret += t.output[i]
 	}
 	return ret
-}
-
-func (t *Task) GetStoredOutput() string {
-	return getTail(t.output)
 }
 
 type contextKey string
