@@ -15,14 +15,20 @@ type streamLineSink struct {
 	tail     string
 }
 
+func (sls *streamLineSink) storeLine(t time.Time, line string) {
+	logLine := LogLine{Stream: sls.stream, Line: line}
+	sls.task.StoreLine(logLine)
+	sls.reporter.OutputLine(sls.task, t, logLine)
+}
+
 func (sls *streamLineSink) Add(t time.Time, input string) {
 	for _, line := range strings.SplitAfter(input, "\n") {
 		if strings.HasSuffix(line, "\n") {
 			// full line
 			if sls.tail == "" {
-				sls.reporter.OutputLine(sls.task, t, LogLine{Stream: sls.stream, Line: line})
+				sls.storeLine(t, line)
 			} else {
-				sls.reporter.OutputLine(sls.task, sls.tailTime, LogLine{Stream: sls.stream, Line: sls.tail+line})
+				sls.storeLine(sls.tailTime, sls.tail+line)
 				sls.tail = ""
 			}
 		} else {
@@ -39,7 +45,7 @@ func (sls *streamLineSink) Add(t time.Time, input string) {
 
 func (sls *streamLineSink) Flush(t time.Time) {
 	if sls.tail != "" {
-		sls.reporter.OutputLine(sls.task, sls.tailTime, LogLine{Stream: sls.stream, Line: sls.tail+"\n"})
+		sls.storeLine(sls.tailTime, sls.tail+"\n")
 		sls.tail = ""
 	}
 }

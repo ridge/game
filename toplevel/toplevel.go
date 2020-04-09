@@ -19,6 +19,29 @@ import (
 	"github.com/ridge/game/task"
 )
 
+func formatLine(line task.LogLine) string {
+	if line.Stream == task.StderrStream {
+		return "E | " + line.Line
+	}
+	return "  | " + line.Line
+}
+
+const maxTailLines = 100
+
+func taskTail(t *task.Task) string {
+	b := strings.Builder{}
+
+	start := 0
+	if len(t.Output) > maxTailLines {
+		b.WriteString("<truncated, see logs above>\n")
+		start = len(t.Output) - maxTailLines
+	}
+	for i := start; i < len(t.Output); i++ {
+		b.WriteString(formatLine(t.Output[i]))
+	}
+	return b.String()
+}
+
 type consoleReporter struct {
 }
 
@@ -60,12 +83,7 @@ func (cr consoleReporter) Finished(t *task.Task) {
 }
 
 func (consoleReporter) OutputLine(t *task.Task, time time.Time, line task.LogLine) {
-	tag := " "
-	if line.Stream == task.StderrStream {
-		tag = "E"
-	}
-	fmt.Printf("%s %s | %s", t.StringID(), tag, line.Line)
-	t.StoreLine(line.Line)
+	fmt.Printf("%s %s", t.StringID(), formatLine(line))
 }
 
 // Target is one build target
@@ -170,7 +188,7 @@ func printFailures(t *task.Task) {
 
 		printMultilineIndented(prefix+": ", strings.TrimSuffix(t.Error.Error(), "\n"))
 		if _, seen := seenTasks[t]; !seen {
-			printMultilineIndented(strIndent, t.OutputTail())
+			printMultilineIndented(strIndent, taskTail(t))
 			seenTasks[t] = true
 		} else {
 			printMultilineIndented(strIndent, "<see above>")
