@@ -11,7 +11,7 @@ You describe build tasks in Go, and Game runs them.
 
 `go get github.com/ridge/game`
 
-`game` binary will be installed in your `$GOPATH/bin` directory.
+`game` binary will be installed to your `$GOPATH/bin` directory.
 
 ## Discussion
 
@@ -21,9 +21,6 @@ Join the `#game` channel on [gophers slack](https://gophers.slack.com/) or
 ## Documentation
 
 Documentation website TBD, see [this directory](site/content) in meantime.
-
-See [godoc](https://godoc.org/github.com/ridge/game/game) for how to use Game as
-a library.
 
 ## Why?
 
@@ -38,12 +35,12 @@ of readability for features.
 
 - New features of Game:
   - parameterized dependencies
+  - top-level targets for variables implementing task.Runnable
   - task time tracing
   - per-task output capture (output from parallel tasks is not intermixed)
   - shorthand `ctx.Dep` instead of `mg.CtxDeps(ctx, ...)`
 
 - Game drops several features of Mage:
-  - Alias targets
   - GOPATH environment support
   - Shorthand tasks definition without `Context` parameter
 
