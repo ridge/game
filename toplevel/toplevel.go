@@ -26,7 +26,7 @@ func formatLine(line task.LogLine) string {
 	return "  | " + line.Line
 }
 
-const maxTailLines = 100
+const maxTailLines = 200
 
 func taskTail(t *task.Task) string {
 	b := strings.Builder{}
