@@ -40,10 +40,17 @@ func (t *Task) StringID() string {
 // Name formats task name
 func (t *Task) Name() string {
 	switch r := t.Runnable.(type) {
-	case identifiable:
-		return r.Identify()
 	case fmt.Stringer:
 		return r.String()
+	case identifiable:
+		switch id := r.Identify().(type) {
+		case string:
+			return id
+		case fmt.Stringer:
+			return id.String()
+		default:
+			return fmt.Sprintf("%#v", r)
+		}
 	default:
 		return fmt.Sprintf("%#v", r)
 	}

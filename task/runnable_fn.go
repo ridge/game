@@ -27,7 +27,7 @@ type namedFunc struct {
 }
 
 // Functions are not comparable, so we compare them by their names
-func (nf namedFunc) Identify() string {
+func (nf namedFunc) Identify() interface{} {
 	return nf.name
 }
 
