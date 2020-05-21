@@ -18,7 +18,7 @@ const (
 // LogLine is struct that unites line to be printed with type of stream (stdout or stderr)
 type LogLine struct {
 	Stream Stream
-	Line string
+	Line   string
 }
 
 // Reporter reports events
@@ -48,7 +48,7 @@ type Runnable interface {
 }
 
 type identifiable interface {
-	Identify() string
+	Identify() interface{}
 }
 
 func identify(r Runnable) interface{} {
