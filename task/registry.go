@@ -1,6 +1,7 @@
 package task
 
 import (
+	"reflect"
 	"sync"
 	"time"
 )
@@ -51,9 +52,14 @@ type identifiable interface {
 	Identify() interface{}
 }
 
+type taskID struct {
+	Type reflect.Type
+	ID   interface{}
+}
+
 func identify(r Runnable) interface{} {
 	if i, ok := r.(identifiable); ok {
-		return i.Identify()
+		return taskID{Type: reflect.TypeOf(r), ID: i.Identify()}
 	}
 	return r
 }
