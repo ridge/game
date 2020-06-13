@@ -1,6 +1,7 @@
 package task
 
 import (
+	"reflect"
 	"sync"
 	"time"
 )
@@ -18,7 +19,7 @@ const (
 // LogLine is struct that unites line to be printed with type of stream (stdout or stderr)
 type LogLine struct {
 	Stream Stream
-	Line string
+	Line   string
 }
 
 // Reporter reports events
@@ -48,12 +49,17 @@ type Runnable interface {
 }
 
 type identifiable interface {
-	Identify() string
+	Identify() interface{}
+}
+
+type taskID struct {
+	Type reflect.Type
+	ID   interface{}
 }
 
 func identify(r Runnable) interface{} {
 	if i, ok := r.(identifiable); ok {
-		return i.Identify()
+		return taskID{Type: reflect.TypeOf(r), ID: i.Identify()}
 	}
 	return r
 }
