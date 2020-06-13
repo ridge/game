@@ -322,9 +322,17 @@ func Main(binaryName string, targets []Target, varTargets []Target, defaultTarge
 	help := false // request target help
 	var timeout time.Duration
 	tracing := ""
+	var reportUsageCmd string
+	var reportUsageFrequency time.Duration
+	var usageStateFile string
 
 	fs := flag.FlagSet{}
 	fs.SetOutput(os.Stdout)
+
+	defReportUsageFrequency, _ := time.ParseDuration(os.Getenv("GAMEFILE_REPORT_USAGE_FREQUENCY"))
+	if defReportUsageFrequency == 0 {
+		defReportUsageFrequency = 24 * time.Hour
+	}
 
 	// default flag set with ExitOnError and auto generated PrintDefaults should be sufficient
 	fs.BoolVar(&verbose, "v", parseBool("GAMEFILE_VERBOSE"), "show verbose output when running targets")
@@ -332,6 +340,11 @@ func Main(binaryName string, targets []Target, varTargets []Target, defaultTarge
 	fs.BoolVar(&help, "h", parseBool("GAMEFILE_HELP"), "print out help for a specific target")
 	fs.DurationVar(&timeout, "t", parseDuration("GAMEFILE_TIMEOUT"), "timeout in duration parsable format (e.g. 5m30s)")
 	fs.StringVar(&tracing, "trace", os.Getenv("GAMEFILE_TRACE"), "trace task execution and save to the given file in Chrome trace_event format")
+	fs.StringVar(&reportUsageCmd, "report-usage-cmd", os.Getenv("GAMEFILE_REPORT_USAGE_CMD"),
+		"collect used targets and periodically report them running this command")
+	fs.DurationVar(&reportUsageFrequency, "report-usage-frequency", defReportUsageFrequency, "usage reporting frequency")
+	fs.StringVar(&usageStateFile, "usage-state-file", os.Getenv("GAMEFILE_USAGE_STATE_FILE"),
+		"file to store usage")
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stdout, `
 %s [options] [target]
@@ -412,6 +425,10 @@ Options:
 			fmt.Print(target.Comment + "\n\n")
 		}
 		os.Exit(0)
+	}
+
+	if usageStateFile != "" {
+		updateUsage(usageStateFile, args, reportUsageCmd, reportUsageFrequency)
 	}
 
 	ctx := context.Background()
