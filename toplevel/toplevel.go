@@ -316,7 +316,7 @@ func run(ctx context.Context, tasks []*task.Task, tracingFile string) (exitCode 
 }
 
 // Main is the main function for generated Game binary
-func Main(binaryName string, targets []Target, varTargets []Target, defaultTarget string, desc string, module string) {
+func Main(binaryName string, targets []Target, varTargets []Target, defaultTarget string, desc string, module string, usageConfig UsageConfig) {
 	verbose := false
 	list := false // print out a list of targets
 	help := false // request target help
@@ -412,6 +412,10 @@ Options:
 			fmt.Print(target.Comment + "\n\n")
 		}
 		os.Exit(0)
+	}
+
+	if usageConfig.StateFile != "" {
+		updateUsage(usageConfig, args)
 	}
 
 	ctx := context.Background()

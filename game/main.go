@@ -399,13 +399,14 @@ func Invoke(inv Invocation) int {
 }
 
 type mainfileTemplateData struct {
-	Description string
-	Funcs       []*parse.Function
-	DefaultFunc parse.Function
-	Imports     []*parse.Import
-	Vars        []*parse.Var
-	BinaryName  string
-	Module      string
+	Description    string
+	Funcs          []*parse.Function
+	DefaultFunc    parse.Function
+	Imports        []*parse.Import
+	Vars           []*parse.Var
+	HasUsageConfig bool
+	BinaryName     string
+	Module         string
 }
 
 func nonGameFiles(goCmd, path string, env []string) (map[string]bool, error) {
@@ -581,12 +582,13 @@ func GenerateMainfile(binaryName, path string, info *parse.PrimaryPkgInfo, modul
 	}
 	defer f.Close()
 	data := mainfileTemplateData{
-		Description: info.Description,
-		Funcs:       info.Funcs,
-		Imports:     info.Imports,
-		Vars:        info.Vars,
-		BinaryName:  binaryName,
-		Module:      module,
+		Description:    info.Description,
+		Funcs:          info.Funcs,
+		Imports:        info.Imports,
+		Vars:           info.Vars,
+		BinaryName:     binaryName,
+		Module:         module,
+		HasUsageConfig: info.HasUsageConfig,
 	}
 
 	if info.DefaultFunc != nil {
