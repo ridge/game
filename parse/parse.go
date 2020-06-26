@@ -58,8 +58,9 @@ func (v Var) VarName() string {
 // PrimaryPkgInfo contains information about a primary build package
 type PrimaryPkgInfo struct {
 	*PkgInfo
-	DefaultFunc *Function
-	Imports     []*Import
+	DefaultFunc    *Function
+	HasUsageConfig bool
+	Imports        []*Import
 }
 
 // PkgInfo contains inforamtion about a package of files according to game's
@@ -135,9 +136,10 @@ func PrimaryPackage(gocmd, path string, files []string) (*PrimaryPkgInfo, error)
 	}
 
 	return &PrimaryPkgInfo{
-		PkgInfo:     info,
-		Imports:     imports,
-		DefaultFunc: getDefault(info.Funcs, imports, docPkg),
+		PkgInfo:        info,
+		Imports:        imports,
+		DefaultFunc:    getDefault(info.Funcs, imports, docPkg),
+		HasUsageConfig: getUsageConfig(docPkg),
 	}, nil
 }
 
@@ -538,6 +540,17 @@ func getDefault(funcs []*Function, imports []*Import, docPkg *doc.Package) *Func
 		}
 	}
 	return nil
+}
+
+func getUsageConfig(docPkg *doc.Package) bool {
+	for _, v := range docPkg.Vars {
+		for _, name := range v.Names {
+			if name == "UsageConfig" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func lit2string(l *ast.BasicLit) (string, bool) {

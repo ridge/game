@@ -48,11 +48,15 @@ func main() {
 {{- end}}
 {{- end}}
 	}
+	var uc toplevel.UsageConfig
+{{ if .HasUsageConfig }}
+	uc = UsageConfig
+{{ end }}
 
 	toplevel.Main({{printf "%q" $.BinaryName}}, tlt, vtlt,
 		{{lowerFirst .DefaultFunc.TargetName | printf "%q"}},
 		{{printf "%q" .Description}},
-		{{.Module | printf "%q"}})
+		{{.Module | printf "%q"}}, uc)
 }
 
 
