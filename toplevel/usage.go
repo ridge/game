@@ -11,7 +11,7 @@ import (
 
 type UsageConfig struct {
 	StateFile string
-	Command   func(UsageState) error
+	Run       func(UsageState) error
 	Interval  time.Duration
 }
 
@@ -81,7 +81,7 @@ func updateUsage(c UsageConfig, targets []string) {
 		return
 	}
 
-	if err := c.Command(st); err != nil {
+	if err := c.Run(st); err != nil {
 		fmt.Fprintf(os.Stderr, "unable to send usage report: %v\n", err)
 		return
 	}
