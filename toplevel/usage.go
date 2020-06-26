@@ -11,7 +11,7 @@ import (
 
 type UsageConfig struct {
 	StateFile string
-	Run       func(UsageState) error
+	Process   func(UsageState) error
 	Interval  time.Duration
 }
 
@@ -66,7 +66,7 @@ func saveState(stateFile string, st UsageState) {
 	}
 }
 
-func updateUsage(c UsageConfig, targets []string) {
+func processUsage(c UsageConfig, targets []string) {
 	st := loadState(c.StateFile)
 	for _, target := range targets {
 		st.Frequencies[target]++
@@ -81,7 +81,7 @@ func updateUsage(c UsageConfig, targets []string) {
 		return
 	}
 
-	if err := c.Run(st); err != nil {
+	if err := c.Process(st); err != nil {
 		fmt.Fprintf(os.Stderr, "unable to send usage report: %v\n", err)
 		return
 	}

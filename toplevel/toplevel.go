@@ -415,7 +415,7 @@ Options:
 	}
 
 	if usageConfig.StateFile != "" {
-		updateUsage(usageConfig, args)
+		processUsage(usageConfig, args)
 	}
 
 	ctx := context.Background()
