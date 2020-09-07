@@ -24,14 +24,10 @@ type UsageState struct {
 }
 
 func newState() UsageState {
-	user := os.Getenv("USER")
-	if user == "ubuntu" || user == "tectonic" {
-		user = ""
-	}
 	hostname, _ := os.Hostname()
 	return UsageState{
 		Created:     time.Now(),
-		User:        user,
+		User:        os.Getenv("USER"),
 		Hostname:    hostname,
 		OS:          runtime.GOOS,
 		Frequencies: map[string]int{},
