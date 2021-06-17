@@ -660,12 +660,21 @@ func getPackage(path string, files []string, fset *token.FileSet) (*ast.Package,
 		return nil, fmt.Errorf("failed to parse directory: %v", err)
 	}
 
+	var candidateName string
+	var candidate *ast.Package
 	for name, pkg := range pkgs {
 		if !strings.HasSuffix(name, "_test") {
-			return pkg, nil
+			if candidate != nil {
+				return nil, fmt.Errorf("two non-test packages %q and %q found in path %s", candidateName, name, path)
+			}
+			candidateName = name
+			candidate = pkg
 		}
 	}
-	return nil, fmt.Errorf("no non-test packages found in %s", path)
+	if candidate == nil {
+		return nil, fmt.Errorf("no non-test packages found in %s", path)
+	}
+	return candidate, nil
 }
 
 func hasContextParam(ft *ast.FuncType) bool {
