@@ -1151,27 +1151,46 @@ func Test() {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ioutil.WriteFile(j(dir, "go.mod"), []byte(`module foo.bar/baz
-
-replace github.com/ridge/game => `+j(findSourcePath(), "../..")+`
-
-require (
-	github.com/ridge/game v1.0.0
-)
-`), 0600)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	cmd := exec.Command("go", "mod", "tidy")
+	cmd := exec.Command("go", "mod", "init", "foo.bar/baz")
 	cmd.Dir = dir
 	cmd.Env = os.Environ()
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Error running go mod init: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+	}
+	stderr.Reset()
+	stdout.Reset()
+	cmd = exec.Command("go", "mod", "edit", "-replace=github.com/ridge/game="+j(findSourcePath(), "../.."))
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Error running go mod edit: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+	}
+	stderr.Reset()
+	stdout.Reset()
+	cmd = exec.Command("go", "mod", "tidy")
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Error running go mod tidy: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+	}
+	stderr.Reset()
+	stdout.Reset()
+	cmd = exec.Command("go", "get", "github.com/ridge/game")
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Error running go get: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
 	}
 	stderr.Reset()
 	stdout.Reset()
