@@ -2,14 +2,14 @@ package game
 
 import (
 	"bytes"
+	"debug/elf"
 	"debug/macho"
-	"debug/pe"
+	"debug/plan9obj"
 	"flag"
 	"fmt"
 	"go/build"
 	"go/parser"
 	"go/token"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -224,27 +224,7 @@ func TestListGamefilesIgnoresRespectsGOOSArg(t *testing.T) {
 	}
 }
 
-func TestCompileDiffGoosGoarch(t *testing.T) {
-	target, err := ioutil.TempDir("./testdata", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(target)
-
-	// intentionally choose an arch and os to build that are not our current one.
-
-	var goos, goarch string
-	switch {
-	case runtime.GOOS == "aix":
-		goos = "linux"
-		goarch = "amd64"
-	case runtime.GOARCH == "ppc64":
-		goos = "plan9"
-		goarch = "386"
-	default:
-		goos = "aix"
-		goarch = "ppc64"
-	}
+func compileParse(target, goos, goarch string) error {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	inv := Invocation{
@@ -259,29 +239,38 @@ func TestCompileDiffGoosGoarch(t *testing.T) {
 	}
 	code := Invoke(inv)
 	if code != 0 {
-		t.Fatalf("got code %v, err: %s", code, stderr)
+		return fmt.Errorf("got code %v, err: %s", code, stderr)
 	}
-	os, arch, err := fileData(j(target, "output"))
+	osarch, err := fileData(j(target, "output"))
+	if err != nil {
+		return err
+	}
+	if goos+"/"+goarch != osarch {
+		return fmt.Errorf("compiled %s/%s, got %s", goos, goarch, osarch)
+	}
+	return nil
+}
+
+func TestCompileDiffGoosGoarch(t *testing.T) {
+	target, err := ioutil.TempDir("./testdata", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if goos == "windows" {
-		if os != winExe {
-			t.Error("ran with GOOS=windows but did not produce a windows exe")
-		}
-	} else {
-		if os != macExe {
-			t.Error("ran with GOOS=darwin but did not a mac exe")
-		}
+	defer os.RemoveAll(target)
+
+	// intentionally choose an arch and os to build that are not our current one.
+
+	var goos, goarch string
+	switch {
+	case runtime.GOOS == "plan9":
+		goos, goarch = "linux", "mips"
+	case runtime.GOARCH == "386":
+		goos, goarch = "darwin", "amd64"
+	default:
+		goos, goarch = "plan9", "386"
 	}
-	if goarch == "amd64" {
-		if arch != arch64 {
-			t.Error("ran with GOARCH=amd64 but did not produce a 64 bit exe")
-		}
-	} else {
-		if arch != arch32 {
-			t.Error("rand with GOARCH=386 but did not produce a 32 bit exe")
-		}
+	if err := compileParse(target, goos, goarch); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -1342,51 +1331,32 @@ func TestWrongDependency(t *testing.T) {
 
 /// This code liberally borrowed from https://github.com/rsc/goversion/blob/master/version/exe.go
 
-type exeType int
-type archSize int
-
-const (
-	winExe exeType = iota
-	macExe
-
-	arch32 archSize = iota
-	arch64
-)
-
 // fileData tells us if the given file is mac or windows and if they're 32bit or
 // 64 bit.  Other exe versions are not supported.
-func fileData(file string) (exeType, archSize, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return -1, -1, err
-	}
-	defer f.Close()
-	data := make([]byte, 16)
-	if _, err := io.ReadFull(f, data); err != nil {
-		return -1, -1, err
-	}
-	if bytes.HasPrefix(data, []byte("MZ")) {
-		// hello windows exe!
-		e, err := pe.NewFile(f)
-		if err != nil {
-			return -1, -1, err
+func fileData(file string) (string, error) {
+	p9f, err := plan9obj.Open(file)
+	if err == nil {
+		defer p9f.Close()
+		if p9f.Magic == plan9obj.Magic386 {
+			return "plan9/386", nil
 		}
-		if e.Machine == pe.IMAGE_FILE_MACHINE_AMD64 {
-			return winExe, arch64, nil
-		}
-		return winExe, arch32, nil
 	}
 
-	if bytes.HasPrefix(data, []byte("\xFE\xED\xFA")) || bytes.HasPrefix(data[1:], []byte("\xFA\xED\xFE")) {
-		// hello mac exe!
-		fe, err := macho.NewFile(f)
-		if err != nil {
-			return -1, -1, err
+	mf, err := macho.Open(file)
+	if err == nil {
+		defer mf.Close()
+		if mf.Cpu == macho.CpuAmd64 {
+			return "darwin/amd64", nil
 		}
-		if fe.Cpu&0x01000000 != 0 {
-			return macExe, arch64, nil
-		}
-		return macExe, arch32, nil
 	}
-	return -1, -1, fmt.Errorf("unrecognized executable format")
+
+	ef, err := elf.Open(file)
+	if err == nil {
+		defer ef.Close()
+		if ef.OSABI == elf.ELFOSABI_LINUX && ef.Machine == elf.EM_MIPS {
+			return "linux/mips", nil
+		}
+	}
+
+	return "", fmt.Errorf("unrecognized executable format")
 }
