@@ -233,13 +233,17 @@ func TestCompileDiffGoosGoarch(t *testing.T) {
 
 	// intentionally choose an arch and os to build that are not our current one.
 
-	goos := "windows"
-	if runtime.GOOS == "windows" {
-		goos = "darwin"
-	}
-	goarch := "amd64"
-	if runtime.GOARCH == "amd64" {
+	var goos, goarch string
+	switch {
+	case runtime.GOOS == "aix":
+		goos = "linux"
+		goarch = "amd64"
+	case runtime.GOARCH == "ppc64":
+		goos = "plan9"
 		goarch = "386"
+	default:
+		goos = "aix"
+		goarch = "ppc64"
 	}
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
