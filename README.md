@@ -39,6 +39,9 @@ of readability for features.
   - task time tracing
   - per-task output capture (output from parallel tasks is not intermixed)
   - shorthand `ctx.Dep` instead of `mg.CtxDeps(ctx, ...)`
+  - Functions, variables and methods named `All` are defaults.
+    E.g. a method declaration `func (Hey) All(ctx task.Context) {}`
+	produces a task named `hey`, not `hey:all`.
 
 - Game drops several features of Mage:
   - GOPATH environment support

@@ -39,11 +39,14 @@ type Var struct {
 // TargetName returns the name of the target as it should appear when used from
 // the game CLI.
 func (v Var) TargetName() string {
-	name := v.name
-	if v.pkgAlias != "" {
-		name = v.pkgAlias + ":" + name
+	switch {
+	case v.pkgAlias != "" && v.name == "All":
+		return v.pkgAlias
+	case v.pkgAlias != "":
+		return v.pkgAlias + ":" + v.name
+	default:
+		return v.name
 	}
-	return name
 }
 
 // VarName returns the var name in Go syntax
@@ -102,11 +105,14 @@ func (f Function) ID() string {
 // the game cli.  It is always lowercase.
 func (f Function) TargetName() string {
 	var names []string
-
-	for _, s := range []string{f.pkgAlias, f.receiver, f.name} {
-		if s != "" {
-			names = append(names, s)
-		}
+	if f.pkgAlias != "" {
+		names = append(names, f.pkgAlias)
+	}
+	if f.receiver != "" {
+		names = append(names, f.receiver)
+	}
+	if f.name != "" && f.name != "All" {
+		names = append(names, f.name)
 	}
 	return strings.Join(names, ":")
 }
