@@ -12,12 +12,10 @@ script:
 
 jobs:
   include:
+    - name: Linux
+      os: linux
     - name: macOS
       os: osx
       osx_image: xcode12.5
-      language: go
-      go: 1.17beta1
     - name: Windows
       os: windows
-      language: go
-      go: 1.17beta1
