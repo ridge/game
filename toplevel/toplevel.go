@@ -345,11 +345,13 @@ Options:
 
 	if logFile, ok := os.LookupEnv("GAMEFILE_LOGFILE"); ok {
 		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
-			panic(err)
+			fmt.Printf("Failed to create directory for log file %s: %v\n", logFile, err)
+			os.Exit(1)
 		}
 		fh, err := os.Create(logFile)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Failed to create log file %s: %v\n", err)
+			os.Exit(1)
 		}
 		defer fh.Close() // Not strictly needed, it's open until the process exits, and it's not buffered
 		task.AddReporter(fileReporter{fh})

@@ -22,7 +22,7 @@ func (ds *depSet) blocked() map[int]bool {
 }
 
 func (ds *depSet) unblock(to int) {
-	out := []dep{}
+	var out []dep
 	for _, item := range ds.deps {
 		if item.to != to {
 			out = append(out, item)

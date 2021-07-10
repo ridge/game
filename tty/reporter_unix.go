@@ -192,6 +192,15 @@ func (r *Reporter) OutputLine(t *task.Task, time time.Time, line task.LogLine) {
 	r.drawTasksLine()
 }
 
+func (r *Reporter) handleTermWidthChange() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if cols, err := termWidth(); err == nil {
+		r.termCols = cols
+	}
+}
+
 func termWidth() (int, error) {
 	ws, err := unix.IoctlGetWinsize(unix.Stdout, unix.TIOCGWINSZ)
 	if err != nil {
@@ -215,13 +224,7 @@ func NewReporter() (*Reporter, error) {
 	}
 	go func() {
 		for range winszCh {
-			r.mu.Lock()
-			defer r.mu.Unlock()
-
-			cols, err := termWidth()
-			if err == nil {
-				r.termCols = cols
-			}
+			r.handleTermWidthChange()
 		}
 	}()
 	return r, nil
