@@ -4,8 +4,8 @@ cache:
   - $GOPATH/pkg/mod
 
 language: go
-go:
-  - 1.17beta1
+go: 1.17beta1
+
 script:
   - go vet ./...
   - go test -race ./...
