@@ -1,27 +1,23 @@
-branches:
-  only:
-  - master
-
-language: go
 cache:
   directories:
   - $HOME/.cache/go-build
   - $GOPATH/pkg/mod
+
+language: go
 go:
-- 1.17beta1
-install: true
+  - 1.17beta1
 script:
-- go vet ./...
-- go test -race ./...
+  - go vet ./...
+  - go test -race ./...
 
 jobs:
   include:
-  - name: macOS
-    os: osx
-    osx_image: xcode12.5
-    language: go
-    go: 1.17beta1
-  - name: Windows
-    os: windows
-    language: go
-    go: 1.17beta1
+    - name: macOS
+      os: osx
+      osx_image: xcode12.5
+      language: go
+      go: 1.17beta1
+    - name: Windows
+      os: windows
+      language: go
+      go: 1.17beta1
