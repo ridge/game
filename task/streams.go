@@ -6,9 +6,9 @@ import (
 )
 
 type streamLineSink struct {
-	task     *Task
-	reporter Reporter
-	stream   Stream
+	task      *Task
+	reporters []Reporter
+	stream    Stream
 
 	// current non-\n-terminated line of output
 	tailTime time.Time
@@ -18,7 +18,9 @@ type streamLineSink struct {
 func (sls *streamLineSink) storeLine(t time.Time, line string) {
 	logLine := LogLine{Stream: sls.stream, Line: line}
 	sls.task.StoreLine(logLine)
-	sls.reporter.OutputLine(sls.task, t, logLine)
+	for _, r := range sls.reporters {
+		r.OutputLine(sls.task, t, logLine)
+	}
 }
 
 func (sls *streamLineSink) Add(t time.Time, input string) {
@@ -68,9 +70,9 @@ func (slw streamLineWriter) Flush() {
 	slw.sink.Flush(time.Now())
 }
 
-func newStreamLineWriters(task *Task, reporter Reporter) (flushWriter, flushWriter) {
-	stdoutSink := &streamLineSink{task: task, reporter: reporter, stream: StdoutStream}
-	stderrSink := &streamLineSink{task: task, reporter: reporter, stream: StderrStream}
+func newStreamLineWriters(task *Task, reporters []Reporter) (flushWriter, flushWriter) {
+	stdoutSink := &streamLineSink{task: task, reporters: reporters, stream: StdoutStream}
+	stderrSink := &streamLineSink{task: task, reporters: reporters, stream: StderrStream}
 
 	return streamLineWriter{stdoutSink, stderrSink}, streamLineWriter{stderrSink, stdoutSink}
 }

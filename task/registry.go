@@ -35,8 +35,8 @@ type Reporter interface {
 
 // Registry registers runnables for execution
 type Registry struct {
-	reporter Reporter
-	module   string
+	reporters []Reporter
+	module    string
 
 	mu     sync.Mutex
 	tasks  map[interface{}]*Task
@@ -77,9 +77,9 @@ func (r *Registry) Register(fns []interface{}) []*Task {
 
 		if _, exists := r.tasks[identity]; !exists {
 			r.tasks[identity] = &Task{
-				ID:       r.nextID,
-				Runnable: runnable,
-				reporter: r.reporter,
+				ID:        r.nextID,
+				Runnable:  runnable,
+				reporters: r.reporters,
 			}
 			r.nextID++
 		}
@@ -102,9 +102,9 @@ var All = Registry{
 	tasks: map[interface{}]*Task{},
 }
 
-// SetReporter sets the reporter
-func SetReporter(reporter Reporter) {
-	All.reporter = reporter
+// AddReporter adds the reporter
+func AddReporter(reporter Reporter) {
+	All.reporters = append(All.reporters, reporter)
 }
 
 // SetModule sets the code module
