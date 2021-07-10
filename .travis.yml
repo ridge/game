@@ -1,3 +1,7 @@
+branches:
+  only: # Build only PRs and master branch
+    - master
+
 cache:
   directories:
   - $HOME/.cache/go-build
