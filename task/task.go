@@ -23,8 +23,8 @@ type Task struct {
 	ID       int
 	Runnable Runnable
 
-	once     sync.Once
-	reporter Reporter
+	once      sync.Once
+	reporters []Reporter
 
 	// Fields below are filled during t.Run()
 	Spans  []Span
@@ -53,6 +53,24 @@ func (t *Task) Name() string {
 		}
 	default:
 		return fmt.Sprintf("%#v", r)
+	}
+}
+
+func (t *Task) ShortName() string {
+	switch r := t.Runnable.(type) {
+	case identifiable:
+		switch id := r.Identify().(type) {
+		case string:
+			return id
+		case fmt.Stringer:
+			return id.String()
+		default:
+			return fmt.Sprintf("%T", r)
+		}
+	case fmt.Stringer:
+		return r.String()
+	default:
+		return fmt.Sprintf("%T", r)
 	}
 }
 
@@ -129,9 +147,11 @@ func (tc *taskContext) closeSpan(subtasks []*Task) {
 }
 
 func (t *Task) run(ctx Context) {
-	t.reporter.Started(t)
+	for _, r := range t.reporters {
+		r.Started(t)
+	}
 
-	stdout, stderr := newStreamLineWriters(t, t.reporter)
+	stdout, stderr := newStreamLineWriters(t, t.reporters)
 
 	tc := &taskContext{
 		task:          t,
@@ -152,7 +172,9 @@ func (t *Task) run(ctx Context) {
 			}
 		}
 
-		t.reporter.Finished(t)
+		for _, r := range t.reporters {
+			r.Finished(t)
+		}
 	}()
 
 	t.Runnable.Run(ctx)
@@ -203,7 +225,9 @@ func runSubtasks(ctx Context, subtasks []*Task) {
 
 	finishedCh := make(chan *Task, len(subtasks))
 
-	tc.task.reporter.Dependencies(tc.task, subtasks, false)
+	for _, r := range tc.task.reporters {
+		r.Dependencies(tc.task, subtasks, false)
+	}
 
 	for _, subtask := range subtasks {
 		go func(subtask *Task) {
@@ -232,7 +256,9 @@ func runSubtasksSequential(ctx Context, subtasks []*Task) {
 	tc := taskCtx(ctx)
 	tc.closeSpan(nil)
 
-	tc.task.reporter.Dependencies(tc.task, subtasks, true)
+	for _, r := range tc.task.reporters {
+		r.Dependencies(tc.task, subtasks, true)
+	}
 
 	var f []*Task
 

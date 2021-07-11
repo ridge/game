@@ -17,14 +17,8 @@ import (
 	"time"
 
 	"github.com/ridge/game/task"
+	"github.com/ridge/game/tty"
 )
-
-func formatLine(line task.LogLine) string {
-	if line.Stream == task.StderrStream {
-		return "E | " + line.Line
-	}
-	return "  | " + line.Line
-}
 
 const maxTailLines = 200
 
@@ -40,50 +34,6 @@ func taskTail(t *task.Task) string {
 		b.WriteString(formatLine(t.Output[i]))
 	}
 	return b.String()
-}
-
-type consoleReporter struct {
-}
-
-func (consoleReporter) Started(t *task.Task) {
-	fmt.Printf("%s STARTED %s\n", t.StringID(), t.Name())
-}
-
-func (consoleReporter) Dependencies(dependent *task.Task, dependees []*task.Task, sequential bool) {
-	s := []string{}
-	for _, d := range dependees {
-		s = append(s, d.String())
-	}
-	op := "DEPS"
-	if sequential {
-		op = "SEQDEPS"
-	}
-	fmt.Printf("%s %s %s -> %s\n", dependent.StringID(), op, dependent.Name(), strings.Join(s, ", "))
-}
-
-func (cr consoleReporter) Finished(t *task.Task) {
-	tag := "SUCCEEDED"
-	if t.Error != nil {
-		tag = "FAILED"
-		msg := t.Error.Error()
-		if !strings.HasSuffix(msg, "\n") {
-			msg += "\n"
-		}
-		for _, line := range strings.SplitAfter(msg, "\n") {
-			if line == "" {
-				continue
-			}
-			cr.OutputLine(t, t.End(), task.LogLine{Stream: task.StderrStream, Line: line})
-		}
-	}
-	dur := t.Duration()
-	self := t.SelfDuration()
-	fmt.Printf("%s %s %s time=%.02fs, self=%.02fs, subtasks=%.02fs\n",
-		t.StringID(), tag, t.Name(), dur.Seconds(), self.Seconds(), (dur - self).Seconds())
-}
-
-func (consoleReporter) OutputLine(t *task.Task, time time.Time, line task.LogLine) {
-	fmt.Printf("%s %s", t.StringID(), formatLine(line))
 }
 
 // Target is one build target
@@ -378,7 +328,36 @@ Options:
 	}
 
 	task.SetModule(module)
-	task.SetReporter(consoleReporter{})
+
+	var ttyReporter task.Reporter
+	if _, disableTTY := os.LookupEnv("GAMEFILE_NO_TTY"); !disableTTY {
+		var err error
+		ttyReporter, err = tty.NewReporter()
+		if err == nil {
+			task.AddReporter(ttyReporter)
+		}
+	}
+
+	// Always fall back to non-TTY reporter
+	if ttyReporter == nil {
+		task.AddReporter(fileReporter{os.Stdout})
+	}
+
+	if logFile, ok := os.LookupEnv("GAMEFILE_LOGFILE"); ok {
+		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
+			fmt.Printf("Failed to create directory for log file %s: %v\n", logFile, err)
+			os.Exit(1)
+		}
+		fh, err := os.Create(logFile)
+		if err != nil {
+			fmt.Printf("Failed to create log file %s: %v\n", logFile, err)
+			os.Exit(1)
+		}
+		defer fh.Close() // Not strictly needed, it's open until the process exits, and it's not buffered
+		task.AddReporter(fileReporter{fh})
+
+		fmt.Printf("Log file: %s\n", logFile)
+	}
 
 	if len(args) == 0 {
 		if defaultTarget != "" {
