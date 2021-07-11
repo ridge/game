@@ -350,7 +350,7 @@ Options:
 		}
 		fh, err := os.Create(logFile)
 		if err != nil {
-			fmt.Printf("Failed to create log file %s: %v\n", err)
+			fmt.Printf("Failed to create log file %s: %v\n", logFile, err)
 			os.Exit(1)
 		}
 		defer fh.Close() // Not strictly needed, it's open until the process exits, and it's not buffered
