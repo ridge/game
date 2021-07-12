@@ -58,6 +58,9 @@ func testmain(m *testing.M) int {
 	if err := os.Unsetenv(mg.IgnoreDefaultEnv); err != nil {
 		log.Fatal(err)
 	}
+	if err := os.Setenv(mg.NoTTYEnv, ""); err != nil {
+		log.Fatal(err)
+	}
 	return m.Run()
 }
 

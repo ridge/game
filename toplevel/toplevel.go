@@ -16,6 +16,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/ridge/game/mg"
 	"github.com/ridge/game/task"
 	"github.com/ridge/game/tty"
 )
@@ -330,7 +331,7 @@ Options:
 	task.SetModule(module)
 
 	var ttyReporter task.Reporter
-	if _, disableTTY := os.LookupEnv("GAMEFILE_NO_TTY"); !disableTTY {
+	if _, disableTTY := os.LookupEnv(mg.NoTTYEnv); !disableTTY {
 		var err error
 		ttyReporter, err = tty.NewReporter()
 		if err == nil {

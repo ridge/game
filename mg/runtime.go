@@ -36,6 +36,9 @@ const IgnoreDefaultEnv = "GAMEFILE_IGNOREDEFAULT"
 // game with the -f flag.
 const HashFastEnv = "GAMEFILE_HASHFAST"
 
+// NoTTYEnv disables TTY console reporter
+const NoTTYEnv = "GAMEFILE_NO_TTY"
+
 // Verbose reports whether a gamefile was run with the verbose flag.
 func Verbose() bool {
 	b, _ := strconv.ParseBool(os.Getenv(VerboseEnv))
