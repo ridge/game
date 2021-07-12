@@ -1124,6 +1124,16 @@ func findSourcePath() string {
 	return filename
 }
 
+func runGo(t *testing.T, dir string, args ...string) {
+	cmd := exec.Command("go", args...)
+	cmd.Dir = dir
+	cmd.Stderr = &bytes.Buffer{}
+	cmd.Stdout = &bytes.Buffer{}
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Error running go %s: %v\nStdout: %s\nStderr: %s", strings.Join(args, " "), err, cmd.Stdout, cmd.Stderr)
+	}
+}
+
 func TestGoModules(t *testing.T) {
 	matches := runtimeVer.FindStringSubmatch(runtime.Version())
 	if len(matches) < 2 || minorVer(t, matches[1]) < 11 {
@@ -1148,48 +1158,14 @@ func Test() {
 		t.Fatal(err)
 	}
 
+	runGo(t, dir, "mod", "init", "foo.bar/baz")
+	runGo(t, dir, "mod", "edit", "-replace=github.com/ridge/game="+j(findSourcePath(), "../.."))
+	runGo(t, dir, "mod", "tidy")
+	runGo(t, dir, "get", "github.com/ridge/game")
+	runGo(t, dir, "get", "golang.org/x/sys@v0.0.0-20210630005230-0f9fa26af87c")
+
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	cmd := exec.Command("go", "mod", "init", "foo.bar/baz")
-	cmd.Dir = dir
-	cmd.Env = os.Environ()
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error running go mod init: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
-	}
-	stderr.Reset()
-	stdout.Reset()
-	cmd = exec.Command("go", "mod", "edit", "-replace=github.com/ridge/game="+j(findSourcePath(), "../.."))
-	cmd.Dir = dir
-	cmd.Env = os.Environ()
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error running go mod edit: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
-	}
-	stderr.Reset()
-	stdout.Reset()
-	cmd = exec.Command("go", "mod", "tidy")
-	cmd.Dir = dir
-	cmd.Env = os.Environ()
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error running go mod tidy: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
-	}
-	stderr.Reset()
-	stdout.Reset()
-	cmd = exec.Command("go", "get", "github.com/ridge/game")
-	cmd.Dir = dir
-	cmd.Env = os.Environ()
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error running go get: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
-	}
-	stderr.Reset()
-	stdout.Reset()
 	code := Invoke(Invocation{
 		Dir:    dir,
 		Stderr: stderr,
