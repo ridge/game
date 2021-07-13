@@ -22,6 +22,7 @@ const (
 	red              = "\x1b[31m"
 	gray             = "\x1b[37m"
 	blue             = "\x1b[34m"
+	lightGreen       = "\x1b[92m"
 	defColor         = "\x1b[0m"
 )
 
@@ -171,7 +172,12 @@ func (r *Reporter) Finished(t *task.Task) {
 	r.deps.unblock(t.ID)
 	delete(r.unfinished, t.ID)
 
-	r.drawTasksLine()
+	if t.ID == 0 {
+		// This was the last task
+		fmt.Printf("%s\n%sAll tasks completed successfully%s\n", clearToEndOfLine, lightGreen, defColor)
+	} else {
+		r.drawTasksLine()
+	}
 }
 
 func formatLine(line task.LogLine) string {
