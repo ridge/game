@@ -172,8 +172,8 @@ func (r *Reporter) Finished(t *task.Task) {
 	r.deps.unblock(t.ID)
 	delete(r.unfinished, t.ID)
 
-	if t.ID == 0 {
-		// This was the last task
+	if t.ID == 0 && t.Error == nil {
+		// Last task finished successfully
 		fmt.Printf("%s\n%sAll tasks completed successfully%s\n", clearToEndOfLine, lightGreen, defColor)
 	} else {
 		r.drawTasksLine()
