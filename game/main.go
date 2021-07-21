@@ -558,7 +558,7 @@ func Compile(goos, goarch, gamePath, goCmd, compileTo string, gofiles []string, 
 		gofiles[i] = filepath.Base(gofiles[i])
 	}
 	debug.Printf("running %s build -o %s %s", goCmd, compileTo, strings.Join(gofiles, " "))
-	c := exec.Command(goCmd, append([]string{"build", "-o", compileTo}, gofiles...)...)
+	c := exec.Command(goCmd, append([]string{"build", "-tags=game", "-o", compileTo}, gofiles...)...)
 	c.Env = environ
 	c.Stderr = stderr
 	c.Stdout = stdout
