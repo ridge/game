@@ -1,4 +1,4 @@
-// +build game
+//go:build !game
 
 package main
 
