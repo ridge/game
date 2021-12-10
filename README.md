@@ -9,14 +9,13 @@ You describe build tasks in Go, and Game runs them.
 
 ## Installation
 
-`go get github.com/ridge/game`
+`go instal github.com/ridge/game@master`
 
 `game` binary will be installed to your `$GOPATH/bin` directory.
 
 ## Discussion
 
-Join the `#game` channel on [gophers slack](https://gophers.slack.com/) or
-[gamefile Google Group](https://groups.google.com/forum/#!forum/gamefile).
+Join the `#game` channel on [gophers slack](https://gophers.slack.com/).
 
 ## Documentation
 
@@ -35,7 +34,7 @@ of readability for features.
 
 - New features of Game:
   - parameterized dependencies
-  - top-level targets for variables implementing task.Runnable
+  - top-level targets for variables implementing `task.Runnable`
   - task time tracing
   - per-task output capture (output from parallel tasks is not intermixed)
   - shorthand `ctx.Dep` instead of `mg.CtxDeps(ctx, ...)`
