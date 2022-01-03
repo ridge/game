@@ -222,6 +222,7 @@ func NewReporter() (*Reporter, error) {
 
 	cols, err := termWidth()
 	if err != nil {
+		signal.Stop(winszCh)
 		return nil, err
 	}
 	r := &Reporter{
