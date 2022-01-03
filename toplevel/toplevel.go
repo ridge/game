@@ -330,17 +330,17 @@ Options:
 
 	task.SetModule(module)
 
-	var ttyReporter task.Reporter
+	var haveReporter bool
 	if _, disableTTY := os.LookupEnv(mg.NoTTYEnv); !disableTTY {
-		var err error
-		ttyReporter, err = tty.NewReporter()
+		ttyReporter, err := tty.NewReporter()
 		if err == nil {
 			task.AddReporter(ttyReporter)
+			haveReporter = true
 		}
 	}
 
 	// Always fall back to non-TTY reporter
-	if ttyReporter == nil {
+	if !haveReporter {
 		task.AddReporter(fileReporter{os.Stdout})
 	}
 
