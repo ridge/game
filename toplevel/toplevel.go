@@ -24,14 +24,12 @@ import (
 const maxTailLines = 200
 
 func taskTail(t *task.Task) string {
-	b := strings.Builder{}
-
-	start := 0
 	if len(t.Output) > maxTailLines {
-		b.WriteString("<truncated, see logs above>\n")
-		start = len(t.Output) - maxTailLines
+		return "<error is too long, see logs above>\n"
 	}
-	for i := start; i < len(t.Output); i++ {
+
+	b := strings.Builder{}
+	for i := 0; i < len(t.Output); i++ {
 		b.WriteString(formatLine(t.Output[i]))
 	}
 	return b.String()
