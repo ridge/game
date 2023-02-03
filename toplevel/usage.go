@@ -20,16 +20,24 @@ type UsageState struct {
 	User        string
 	Hostname    string
 	OS          string
+	Distro      string
 	Frequencies map[string]int
 }
 
 func newState() UsageState {
 	hostname, _ := os.Hostname()
+	var distro string
+	if distroBytes, err := os.ReadFile("/etc/os-release"); err != nil {
+		distro = fmt.Sprintf("[can't read due to %s]", err)
+	} else {
+		distro = string(distroBytes)
+	}
 	return UsageState{
 		Created:     time.Now(),
 		User:        os.Getenv("USER"),
 		Hostname:    hostname,
 		OS:          runtime.GOOS,
+		Distro:      distro,
 		Frequencies: map[string]int{},
 	}
 }
